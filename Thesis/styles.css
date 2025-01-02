@@ -1,0 +1,81 @@
+/* Enhanced CSS for Emotion Analysis */
+
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 50px;
+    width: 100vw;
+    height: 90vh;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.title {
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 10px;
+    padding: 5px;
+}
+
+.body {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    gap: 10px;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+#sentences {
+    flex: 0 0 50%;
+    height: 100%;
+    overflow-y: auto;
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    font-size: large;
+}
+
+.charts {
+    flex: 0 0 50%;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    height: 100%;
+    overflow: hidden;
+    padding: 5px;
+}
+
+#steamGraph {
+    flex: 0 0 30%;
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow-y: auto;
+}
+
+#chart {
+    flex: 0 0 70%;
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow-y: auto;
+}
+
+#chart svg {
+    width: 100%;
+    /* SVG fills the entire width of the #chart div */
+    height: 100%;
+    /* SVG fills the entire height of the #chart div */
+    display: block;
+    /* Removes unwanted spacing below inline SVGs */
+}
