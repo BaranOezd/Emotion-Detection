@@ -1,0 +1,77 @@
+/* Enhanced CSS for Scalable Visualization */
+
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2%;
+    width: 100vw;
+    height: 100vh;
+    padding: 2%;
+}
+
+.title {
+    text-align: center;
+    font-size: 1.8rem;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.body {
+    display: flex;
+    flex-direction: row;
+    gap: 2%;
+    width: 100%;
+    height: 85%;
+}
+
+#sentences {
+    flex: 1.5; /* Make sentences list wider */
+    height: 100%;
+    overflow-y: auto;
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    font-size: 1rem;
+}
+
+.charts {
+    flex: 2.5; /* Adjust chart container to accommodate wider sentences */
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    height: 100%;
+}
+
+#steamGraph {
+    flex: 0.4; /* Reduce steam graph height */
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+#chart {
+    flex: 0.6; /* Adjust bar chart height to fill remaining space */
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+#steamGraph svg,
+#chart svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
