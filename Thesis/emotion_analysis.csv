@@ -1,11 +1,7 @@
 Sentence,Happiness,Sadness,Fear,Anger,Surprise,Disgust,Neutral
-"I can't believe this is happening, it's amazing!",0.9,0.0,0.1,0.0,0.8,0.0,0.0
-I'm so disappointed in you right now.,0.0,0.9,0.0,0.7,0.1,0.0,0.0
-You make me feel so loved and cherished.,0.8,0.0,0.0,0.0,0.2,0.0,0.0
-I am absolutely terrified of what comes next.,0.0,0.0,0.9,0.1,0.5,0.0,0.0
-"Wow, what a shocking turn of events!",0.0,0.0,0.2,0.0,0.9,0.0,0.0
-I'm filled with rage over this injustice!,0.0,0.0,0.0,0.9,0.0,0.3,0.0
-Life feels so empty and pointless these days.,0.0,0.9,0.0,0.0,0.0,0.0,0.0
-I adore spending time with my family.,0.8,0.0,0.0,0.0,0.1,0.0,0.0
-This is beyond frustrating. I'm done.,0.0,0.0,0.0,0.8,0.0,0.1,0.0
 I feel a little anxious but also excited for tomorrow.,0.5,0.0,0.5,0.0,0.0,0.0,0.0
+"I lost the only thing that kept me going.",0.1,0.7,0.2,0.1,0.1,0.0,0.0
+"Every day feels heavier than the last.",0.1,0.75,0.1,0.1,0.0,0.0,0.05
+"I don't know how much more of this I can take.",0.0,0.8,0.3,0.0,0.0,0.0,0.0
+"The world feels so distant and cold.",0.05,0.7,0.2,0.0,0.0,0.0,0.05
+"All I see around me are reminders of what I’ve lost.",0.0,0.75,0.2,0.1,0.0,0.0,0.0
