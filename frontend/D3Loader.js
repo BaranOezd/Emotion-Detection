@@ -1,5 +1,5 @@
 // Load the CSV file using D3.js
-d3.csv("../backend/emotion_analysis.csv").then(function (data) {
+d3.csv("/backend/emotion_analysis.csv").then(function (data) {
     const emotions = data.columns.slice(1); // Get emotion columns (skip the first column which is 'Sentence')
 
     // Emotion color mapping based on Ekman's discrete model
