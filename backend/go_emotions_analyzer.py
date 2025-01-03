@@ -1,4 +1,6 @@
 import csv
+import os
+
 from datasets import load_dataset
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
 from collections import Counter
@@ -26,8 +28,10 @@ class GoEmotionsAnalyzer:
                                          top_k=None)  # Use top_k=None to replace deprecated return_all_scores=True
         print("Model loaded successfully.")
 
-        # Extract labels from the dataset
-        self.emotion_labels = self.dataset['train'].features['labels'].feature.names
+        # Extract and filter labels for the six emotions + neutral
+        all_labels = self.dataset['train'].features['labels'].feature.names
+        self.target_emotions = {"happiness", "sadness", "fear", "anger", "disgust", "surprise", "neutral"}
+        self.emotion_labels = [label for label in all_labels if label.lower() in self.target_emotions]
 
     def analyze_emotions(self, sentence):
         """
@@ -37,8 +41,9 @@ class GoEmotionsAnalyzer:
         :return: A dictionary with emotions and their associated probabilities
         """
         results = self.emotion_pipeline(sentence)
-        # Convert results to a dictionary
-        emotion_scores = {result['label']: result['score'] for result in results[0]}
+        # Filter results to include only the six emotions + neutral
+        emotion_scores = {result['label']: result['score'] for result in results[0]
+                          if result['label'].lower() in self.target_emotions}
         return emotion_scores
 
     def batch_analyze(self, sentences):
@@ -57,7 +62,7 @@ class GoEmotionsAnalyzer:
 
     def batch_analyze_and_save_to_csv(self, sentences, output_csv="emotion_analysis.csv"):
         """
-        Analyze emotions for a batch of sentences and save the results to a CSV file.
+        Analyze emotions for a batch of sentences and save the results to a CSV file in the backend folder.
 
         :param sentences: A list of sentences
         :param output_csv: The name of the output CSV file
@@ -65,9 +70,14 @@ class GoEmotionsAnalyzer:
         # Perform emotion analysis for each sentence
         results = self.batch_analyze(sentences)
 
-        # Save results to CSV
-        with open(output_csv, mode="w", newline="") as file:
-            writer = csv.writer(file)
+        # Use the existing backend folder relative to the script
+        script_dir = os.path.dirname(__file__)  # Directory of the current script
+        backend_folder = script_dir         
+
+        # Save results to CSV in the backend folder
+        output_csv_path = os.path.join(backend_folder, output_csv)
+        with open(output_csv_path, mode="w", newline="", encoding="utf-8") as file:
+            writer = csv.writer(file)  # Default behavior: quote when necessary
             # Write header
             writer.writerow(["Sentence"] + self.emotion_labels)  # Add emotion labels as header
 
@@ -80,54 +90,21 @@ class GoEmotionsAnalyzer:
                     row.append(f"{score:.2f}")
                 writer.writerow(row)
 
-        print(f"Emotion analysis results saved to {output_csv}")
-
-    def get_label_distribution(self):
-        """
-        Get the label distribution in the training split of the dataset.
-
-        :return: A dictionary with label frequencies
-        """
-        print("Analyzing label distribution in the training split...")
-
-        # Accessing the 'train' split of the dataset
-        train_dataset = self.dataset['train']
-
-        # Flatten the list of labels to handle multi-label examples
-        all_labels = [label for labels in train_dataset['labels'] for label in labels]
-
-        # Count the occurrences of each label
-        label_counts = Counter(all_labels)
-
-        # Prepare the label distribution
-        label_distribution = {self.emotion_labels[label]: count for label, count in label_counts.items()}
-
-        # Save the label distribution to a CSV file
-        with open("label_distribution.csv", mode="w", newline="") as file:
-            writer = csv.writer(file)
-            writer.writerow(["Emotion", "Count"])  # Write header
-            for label, count in label_distribution.items():
-                writer.writerow([label, count])
-
-        print(f"Label distribution saved to label_distribution.csv")
-        return label_distribution
-
+        print(f"Emotion analysis results saved to {output_csv_path}")            
 
 if __name__ == "__main__":
     # Initialize the GoEmotionsAnalyzer
     analyzer = GoEmotionsAnalyzer()
 
     # Batch sentence analysis and save the results to a CSV file
-    sentences = [
-       "I can't believe this is happening, it's amazing!", #(Expected: joy, surprise)
-        "I'm so disappointed in you right now.", #(Expected: sadness, anger)
-        "You make me feel so loved and cherished.", #(Expected: love, joy)
-        "I am absolutely terrified of what comes next.", #(Expected: fear)
-        "Wow, what a shocking turn of events!", #(Expected: surprise)
-        "I'm filled with rage over this injustice!", #(Expected: anger)
-        "Life feels so empty and pointless these days.", #(Expected: sadness)
-        "I adore spending time with my family.", #(Expected: love, joy)
-        "This is beyond frustrating. I'm done.", #(Expected: anger)
-        "I feel a little anxious but also excited for tomorrow.", #(Expected: fear, joy)
+    sentences = [        
+        "I feel a little anxious but also excited for tomorrow",
+        "I lost the only thing that kept me going.",
+        "Every day feels heavier than the last.",
+        "I don't know how much more of this I can",
+        "The world feels so distant and cold.",
+        "All I see around me are reminders of what I have lost."
     ]
     analyzer.batch_analyze_and_save_to_csv(sentences, output_csv="emotion_analysis.csv")
+
+    
