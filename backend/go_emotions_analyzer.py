@@ -1,49 +1,37 @@
 import csv
 import os
 
-from datasets import load_dataset
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
-from collections import Counter
 
 
 class GoEmotionsAnalyzer:
-    def __init__(self, dataset_name="google-research-datasets/go_emotions", dataset_config="simplified",
-                 model_name="bhadresh-savani/bert-base-uncased-emotion"):
+    def __init__(self, model_name="j-hartmann/emotion-english-distilroberta-base"):
         """
-        Initialize the GoEmotionsAnalyzer with the GoEmotions dataset and a pre-trained model.
+        Initialize the GoEmotionsAnalyzer with a pre-trained RoBERTa model.
 
-        :param dataset_name: The Hugging Face dataset name for GoEmotions
-        :param dataset_config: The configuration for the GoEmotions dataset (e.g., "simplified")
         :param model_name: The Hugging Face model name for emotion classification
         """
-        print(f"Loading GoEmotions dataset...")
-        self.dataset = load_dataset(dataset_name, dataset_config)
-        print("Dataset loaded successfully.")
-
-        # Load the pre-trained model and tokenizer
+        # Load the pre-trained RoBERTa model and tokenizer
         print(f"Loading model '{model_name}'...")
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForSequenceClassification.from_pretrained(model_name)
-        self.emotion_pipeline = pipeline("text-classification", model=self.model, tokenizer=self.tokenizer,
-                                         top_k=None)  # Use top_k=None to replace deprecated return_all_scores=True
+        self.emotion_pipeline = pipeline("text-classification", model=self.model, tokenizer=self.tokenizer, top_k=None)
         print("Model loaded successfully.")
 
-        # Extract and filter labels for the six emotions + neutral
-        all_labels = self.dataset['train'].features['labels'].feature.names
-        self.target_emotions = {"happiness", "sadness", "fear", "anger", "disgust", "surprise", "neutral"}
-        self.emotion_labels = [label for label in all_labels if label.lower() in self.target_emotions]
+        # Extract emotion labels from the model configuration
+        self.emotion_labels = list(self.model.config.id2label.values())
+        print(f"Emotion labels: {self.emotion_labels}")
 
     def analyze_emotions(self, sentence):
         """
-        Analyze emotions for a given sentence using the pre-trained BERT model.
+        Analyze emotions for a given sentence using the pre-trained RoBERTa model.
 
         :param sentence: The input text for emotion classification
         :return: A dictionary with emotions and their associated probabilities
         """
         results = self.emotion_pipeline(sentence)
-        # Filter results to include only the six emotions + neutral
-        emotion_scores = {result['label']: result['score'] for result in results[0]
-                          if result['label'].lower() in self.target_emotions}
+        # Convert results to a dictionary with emotion scores
+        emotion_scores = {result['label']: result['score'] for result in results[0]}
         return emotion_scores
 
     def batch_analyze(self, sentences):
@@ -62,7 +50,7 @@ class GoEmotionsAnalyzer:
 
     def batch_analyze_and_save_to_csv(self, sentences, output_csv="emotion_analysis.csv"):
         """
-        Analyze emotions for a batch of sentences and save the results to a CSV file in the backend folder.
+        Analyze emotions for a batch of sentences and save the results to a CSV file.
 
         :param sentences: A list of sentences
         :param output_csv: The name of the output CSV file
@@ -70,16 +58,15 @@ class GoEmotionsAnalyzer:
         # Perform emotion analysis for each sentence
         results = self.batch_analyze(sentences)
 
-        # Use the existing backend folder relative to the script
-        script_dir = os.path.dirname(__file__)  # Directory of the current script
-        backend_folder = script_dir         
+        # Get the current script directory
+        script_dir = os.path.dirname(__file__)
 
-        # Save results to CSV in the backend folder
-        output_csv_path = os.path.join(backend_folder, output_csv)
+        # Save results to CSV
+        output_csv_path = os.path.join(script_dir, output_csv)
         with open(output_csv_path, mode="w", newline="", encoding="utf-8") as file:
-            writer = csv.writer(file)  # Default behavior: quote when necessary
+            writer = csv.writer(file)
             # Write header
-            writer.writerow(["Sentence"] + self.emotion_labels)  # Add emotion labels as header
+            writer.writerow(["Sentence"] + [label.capitalize() for label in self.emotion_labels])
 
             # Write sentences and their corresponding emotion scores
             for sentence, emotion_scores in zip(sentences, results):
@@ -87,24 +74,23 @@ class GoEmotionsAnalyzer:
                 # Add scores for each emotion
                 for emotion in self.emotion_labels:
                     score = emotion_scores.get(emotion, 0.0)  # Default to 0.0 if emotion is not present
-                    row.append(f"{score:.2f}")
+                    row.append(f"{score:.3f}")
                 writer.writerow(row)
 
-        print(f"Emotion analysis results saved to {output_csv_path}")            
+        print(f"Emotion analysis results saved to {output_csv_path}")
+
 
 if __name__ == "__main__":
     # Initialize the GoEmotionsAnalyzer
     analyzer = GoEmotionsAnalyzer()
 
     # Batch sentence analysis and save the results to a CSV file
-    sentences = [        
-        "I feel a little anxious but also excited for tomorrow",
-        "I lost the only thing that kept me going.",
-        "Every day feels heavier than the last.",
-        "I don't know how much more of this I can",
-        "The world feels so distant and cold.",
-        "All I see around me are reminders of what I have lost."
+    sentences = [
+        "I feel like the world has lost all its color and joy.",
+        "Every day feels heavier than the last, and I don't know how to go on.",
+        "I miss the person I used to be before everything fell apart.",
+        "No matter how hard I try, the emptiness never seems to go away.",
+        "I've lost the only thing that gave my life meaning and direction.",
+        "It's like every step forward only reminds me of everything I've lost."
     ]
     analyzer.batch_analyze_and_save_to_csv(sentences, output_csv="emotion_analysis.csv")
-
-    

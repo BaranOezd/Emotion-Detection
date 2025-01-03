@@ -1,7 +1,7 @@
-Sentence,anger,disgust,fear,sadness,surprise,neutral
-I feel a little anxious but also excited for tomorrow,0.00,0.00,1.00,0.00,0.00,0.00
-I lost the only thing that kept me going.,0.00,0.00,0.00,1.00,0.00,0.00
-Every day feels heavier than the last.,0.00,0.00,0.00,0.99,0.00,0.00
-I don't know how much more of this I can,0.07,0.00,0.09,0.23,0.00,0.00
-The world feels so distant and cold.,0.00,0.00,0.00,0.99,0.00,0.00
-All I see around me are reminders of what I have lost.,0.00,0.00,0.00,1.00,0.00,0.00
+Sentence,Anger,Disgust,Fear,Joy,Neutral,Sadness,Surprise
+I feel like the world has lost all its color and joy.,0.001,0.008,0.001,0.010,0.020,0.957,0.003
+"Every day feels heavier than the last, and I don't know how to go on.",0.010,0.284,0.075,0.002,0.163,0.424,0.041
+I miss the person I used to be before everything fell apart.,0.001,0.004,0.002,0.001,0.013,0.975,0.003
+"No matter how hard I try, the emptiness never seems to go away.",0.032,0.046,0.031,0.008,0.588,0.290,0.005
+I've lost the only thing that gave my life meaning and direction.,0.005,0.009,0.005,0.002,0.019,0.957,0.002
+It's like every step forward only reminds me of everything I've lost.,0.011,0.075,0.071,0.003,0.279,0.517,0.045
