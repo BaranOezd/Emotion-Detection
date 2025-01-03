@@ -4,13 +4,13 @@ d3.csv("/backend/emotion_analysis.csv").then(function (data) {
 
     // Emotion color mapping based on Ekman's discrete model
     const emotionColors = {
-        "Happiness": "#FFEB3B",  // Yellow
-        "Sadness": "#2196F3",    // Blue
-        "Fear": "#9C27B0",       // Purple
-        "Disgust": "#4CAF50",    // Green
-        "Anger": "#F44336",      // Red
-        "Surprise": "#FFB322",   // Orange
-        "Neutral": "#9E9E9E"     // Gray
+        "happiness": "#FFEB3B",  // Yellow
+        "sadness": "#2196F3",    // Blue
+        "fear": "#9C27B0",       // Purple
+        "disgust": "#4CAF50",    // Green
+        "anger": "#F44336",      // Red
+        "surprise": "#FFB322",   // Orange
+        "neutral": "#9E9E9E"     // Gray
     };
 
     // Track the last clicked sentence
