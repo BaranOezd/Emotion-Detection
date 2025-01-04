@@ -1,5 +1,6 @@
 import csv
 import os
+import re
 
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
 
@@ -80,17 +81,52 @@ class GoEmotionsAnalyzer:
         print(f"Emotion analysis results saved to {output_csv_path}")
 
 
+import re
+
+def basic_sentence_split(paragraph):
+    """
+    Split a paragraph into sentences using regex.
+    :param paragraph: Input paragraph as a string
+    :return: List of sentences
+    """
+    # Regex to split sentences based on punctuation followed by space
+    return re.split(r'(?<=[.!?])(?=\s|["\')])', paragraph.strip())
+
+
+    
+def read_sentences_from_file(file_path):
+    """
+    Read sentences from a text file, splitting paragraphs into individual sentences.
+
+    :param file_path: Path to the text file
+    :return: A list of sentences
+    """
+    sentences = []
+    with open(file_path, mode="r", encoding="utf-8") as file:
+        for line in file:
+            if line.strip():  # Ignore empty lines
+                # Tokenize the paragraph into sentences
+                sentences.extend(basic_sentence_split(line.strip()))
+    return sentences
+
+
 if __name__ == "__main__":
     # Initialize the GoEmotionsAnalyzer
     analyzer = GoEmotionsAnalyzer()
 
+    # Path to the input text file
+    input_file = "backend\\sentences.txt"
+
+    # Debugging: Print the working directory
+    print(f"Looking for file in: {os.getcwd()}")
+
+    # Check if the file exists
+    if not os.path.exists(input_file):
+        print(f"Error: The file '{input_file}' does not exist.")
+        exit(1)
+
+    # Read sentences from the text file
+    sentences = read_sentences_from_file(input_file)
+
     # Batch sentence analysis and save the results to a CSV file
-    sentences = [
-        "I feel like the world has lost all its color and joy.",
-        "Every day feels heavier than the last, and I don't know how to go on.",
-        "I miss the person I used to be before everything fell apart.",
-        "No matter how hard I try, the emptiness never seems to go away.",
-        "I've lost the only thing that gave my life meaning and direction.",
-        "It's like every step forward only reminds me of everything I've lost."
-    ]
     analyzer.batch_analyze_and_save_to_csv(sentences, output_csv="emotion_analysis.csv")
