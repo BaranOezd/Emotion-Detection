@@ -1,7 +1,17 @@
 Sentence,Anger,Disgust,Fear,Joy,Neutral,Sadness,Surprise
-I feel like the world has lost all its color and joy.,0.001,0.008,0.001,0.010,0.020,0.957,0.003
-" Every day feels heavier than the last, and I don't know how to go on.",0.010,0.249,0.079,0.002,0.129,0.480,0.051
- I miss the person I used to be before everything fell apart.,0.002,0.004,0.003,0.001,0.011,0.976,0.003
-" No matter how hard I try, the emptiness never seems to go away.",0.035,0.047,0.031,0.009,0.595,0.277,0.005
- I've lost the only thing that gave my life meaning and direction.,0.004,0.006,0.004,0.002,0.013,0.970,0.002
- It's like every step forward only reminds me of everything I've lost.,0.010,0.061,0.062,0.003,0.256,0.568,0.039
+"""You’re a wizard, Harry,"" Hagrid said with a tone of finality.",0.053,0.390,0.008,0.004,0.529,0.006,0.009
+Harry stared at him in disbelief.,0.050,0.148,0.133,0.004,0.051,0.004,0.609
+"""I’m a what?""",0.016,0.008,0.006,0.003,0.011,0.004,0.953
+he finally managed to stammer.,0.003,0.003,0.003,0.079,0.814,0.014,0.084
+"""A wizard, o’ course,"" said Hagrid.",0.030,0.683,0.184,0.003,0.080,0.007,0.012
+"""An’ a thumpin’ good one, I’d say, once you’ve been trained up a bit.""",0.024,0.084,0.009,0.046,0.823,0.007,0.006
+Harry’s head was spinning.,0.093,0.039,0.090,0.005,0.158,0.087,0.528
+"He had spent eleven years being told he was nothing special, just a burden, an ordinary boy.",0.032,0.486,0.012,0.004,0.344,0.111,0.011
+And now this giant was telling him he belonged to some magical world?,0.145,0.067,0.007,0.007,0.106,0.009,0.659
+He tried to protest.,0.531,0.441,0.010,0.001,0.007,0.008,0.001
+"""But I can’t be a wizard,"" Harry insisted.",0.043,0.146,0.102,0.003,0.635,0.064,0.006
+"""I mean, I’m just... Harry.",0.042,0.218,0.039,0.008,0.638,0.017,0.038
+"Just Harry.""",0.022,0.032,0.008,0.003,0.913,0.010,0.012
+Hagrid let out a deep laugh.,0.007,0.034,0.001,0.617,0.321,0.013,0.007
+"""You’ll see,"" he said, ""just wait until you get yer letter and go to Hogwarts.",0.008,0.010,0.004,0.004,0.969,0.002,0.003
+"You’ll fit right in.""",0.007,0.005,0.002,0.010,0.969,0.002,0.004

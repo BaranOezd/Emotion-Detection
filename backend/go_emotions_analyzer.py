@@ -1,9 +1,8 @@
 import csv
 import os
-import re
+import nltk
 
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
-
 
 class GoEmotionsAnalyzer:
     def __init__(self, model_name="j-hartmann/emotion-english-distilroberta-base"):
@@ -12,7 +11,6 @@ class GoEmotionsAnalyzer:
 
         :param model_name: The Hugging Face model name for emotion classification
         """
-        # Load the pre-trained RoBERTa model and tokenizer
         print(f"Loading model '{model_name}'...")
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForSequenceClassification.from_pretrained(model_name)
@@ -31,7 +29,6 @@ class GoEmotionsAnalyzer:
         :return: A dictionary with emotions and their associated probabilities
         """
         results = self.emotion_pipeline(sentence)
-        # Convert results to a dictionary with emotion scores
         emotion_scores = {result['label']: result['score'] for result in results[0]}
         return emotion_scores
 
@@ -56,47 +53,27 @@ class GoEmotionsAnalyzer:
         :param sentences: A list of sentences
         :param output_csv: The name of the output CSV file
         """
-        # Perform emotion analysis for each sentence
         results = self.batch_analyze(sentences)
 
         # Get the current script directory
         script_dir = os.path.dirname(__file__)
+        output_csv_path = script_dir
 
         # Save results to CSV
         output_csv_path = os.path.join(script_dir, output_csv)
         with open(output_csv_path, mode="w", newline="", encoding="utf-8") as file:
             writer = csv.writer(file)
-            # Write header
             writer.writerow(["Sentence"] + [label.capitalize() for label in self.emotion_labels])
-
-            # Write sentences and their corresponding emotion scores
             for sentence, emotion_scores in zip(sentences, results):
-                row = [sentence]
-                # Add scores for each emotion
-                for emotion in self.emotion_labels:
-                    score = emotion_scores.get(emotion, 0.0)  # Default to 0.0 if emotion is not present
-                    row.append(f"{score:.3f}")
+                row = [sentence] + [f"{emotion_scores.get(emotion, 0.0):.3f}" for emotion in self.emotion_labels]
                 writer.writerow(row)
 
         print(f"Emotion analysis results saved to {output_csv_path}")
 
 
-import re
-
-def basic_sentence_split(paragraph):
-    """
-    Split a paragraph into sentences using regex.
-    :param paragraph: Input paragraph as a string
-    :return: List of sentences
-    """
-    # Regex to split sentences based on punctuation followed by space
-    return re.split(r'(?<=[.!?])(?=\s|["\')])', paragraph.strip())
-
-
-    
 def read_sentences_from_file(file_path):
     """
-    Read sentences from a text file, splitting paragraphs into individual sentences.
+    Read sentences from a text file, splitting paragraphs into individual sentences using NLTK.
 
     :param file_path: Path to the text file
     :return: A list of sentences
@@ -105,8 +82,8 @@ def read_sentences_from_file(file_path):
     with open(file_path, mode="r", encoding="utf-8") as file:
         for line in file:
             if line.strip():  # Ignore empty lines
-                # Tokenize the paragraph into sentences
-                sentences.extend(basic_sentence_split(line.strip()))
+                # Use NLTK's sent_tokenize to split paragraphs into sentences
+                sentences.extend(nltk.sent_tokenize(line.strip()))
     return sentences
 
 
@@ -117,7 +94,6 @@ if __name__ == "__main__":
     # Path to the input text file
     input_file = "backend\\sentences.txt"
 
-    # Debugging: Print the working directory
     print(f"Looking for file in: {os.getcwd()}")
 
     # Check if the file exists
