@@ -25,96 +25,108 @@ d3.csv("/backend/emotion_analysis.csv").then(function (data) {
         .attr("class", "sentence-list-item")
         .text(d => d.Sentence)
         .on("mouseover", function () {
-            d3.select(this).style("color", "#0056b3"); // Change text color on hover
+            if (this === lastClickedSentence) {
+                d3.select(this).style("color", "#c00"); // Keep red if already clicked
+            } else {
+                d3.select(this).style("color", "#0056b3"); // Change text color on hover
+            }
         })
         .on("mouseout", function () {
-            if (this !== lastClickedSentence) {
+            if (this === lastClickedSentence) {
+                d3.select(this).style("color", "#c00"); // Keep red if already clicked
+            } else {
                 d3.select(this).style("color", ""); // Reset text color if not clicked
             }
         })
         .on("click", function (event, d) {
             // Reset style for previously clicked sentence
-            if (lastClickedSentence) {
+            if (lastClickedSentence === this) {
+                // Unclick logic: Clear chart and reset styles
                 d3.select(lastClickedSentence).style("color", "").classed("clicked", false);
+                lastClickedSentence = null;
+                clearBarChart(); // Clear the bar chart
+            } else {
+                if (lastClickedSentence) {
+                    d3.select(lastClickedSentence).style("color", "").classed("clicked", false);
+                }
+                // Highlight the clicked sentence
+                d3.select(this).style("color", "#c00").classed("clicked", true); // Red color for active
+                lastClickedSentence = this; // Update last clicked sentence
+                updateBarChart(d); // Update the chart for the clicked sentence
             }
-
-            // Highlight the clicked sentence
-            d3.select(this).style("color", "#c00").classed("clicked", true); // Red color for active
-
-            lastClickedSentence = this; // Update last clicked sentence
-
-            // Update the chart for the clicked sentence
-            updateBarChart(d);
         });
 
-        function updateBarChart(sentenceData) {
-            const chartDiv = d3.select("#chart");
-            chartDiv.html(""); // Clear existing chart
-        
-            const margin = { top: 20, right: 30, bottom: 100, left: 50 };
-            const width = chartDiv.node().clientWidth - margin.left - margin.right;
-            const height = chartDiv.node().clientHeight - margin.top - margin.bottom;
-        
-            const svg = chartDiv.append("svg")
-                .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
-                .attr("preserveAspectRatio", "xMidYMid meet")
-                .style("width", "100%")
-                .style("height", "100%")
-                .append("g")
-                .attr("transform", `translate(${margin.left},${margin.top})`);
-        
-            const x = d3.scaleBand()
-                .domain(emotions)
-                .range([0, width])
-                .padding(0.2);
-        
-            const y = d3.scaleLinear()
-                .domain([0, 1])
-                .nice()
-                .range([height, 0]);
-        
-            // Add X-axis
-            svg.append("g")
-                .attr("transform", `translate(0,${height})`)
-                .call(d3.axisBottom(x))
-                .selectAll("text")
-                .style("text-anchor", "middle")
-                .style("font-size", "12px")
-                .attr("dy", "1.5em");
-        
-            // Add Y-axis with specified tick values and formatting
-            svg.append("g")
-                .call(d3.axisLeft(y)
-                    .ticks(5)
-                    .tickValues([0, 0.2, 0.4, 0.6, 0.8, 1])
-                    .tickFormat(d => `${d * 100}%`) // Format ticks as percentages without decimals
-                );
-        
-            const emotionScores = emotions.map(emotion => ({
-                emotion: emotion,
-                score: +sentenceData[emotion] || 0
-            }));
-        
-            svg.selectAll(".bar")
-                .data(emotionScores)
-                .enter().append("rect")
-                .attr("x", d => x(d.emotion))
-                .attr("y", d => y(d.score))
-                .attr("width", x.bandwidth())
-                .attr("height", d => height - y(d.score))
-                .style("fill", d => emotionColors[d.emotion]);
-        
-            svg.selectAll(".label")
-                .data(emotionScores)
-                .enter().append("text")
-                .attr("x", d => x(d.emotion) + x.bandwidth() / 2)
-                .attr("y", d => y(d.score) - 5)
-                .attr("text-anchor", "middle")
-                .style("font-size", "12px")
-                .text(d => (d.score > 0 ? `${Math.round(d.score * 100)}%` : "")); // Display as an integer percentage
-        }
-        
-         
+    function clearBarChart() {
+        const chartDiv = d3.select("#chart");
+        chartDiv.html(""); // Clear existing chart
+    }
+
+    function updateBarChart(sentenceData) {
+        const chartDiv = d3.select("#chart");
+        chartDiv.html(""); // Clear existing chart
+
+        const margin = { top: 20, right: 30, bottom: 100, left: 50 };
+        const width = chartDiv.node().clientWidth - margin.left - margin.right;
+        const height = chartDiv.node().clientHeight - margin.top - margin.bottom;
+
+        const svg = chartDiv.append("svg")
+            .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
+            .attr("preserveAspectRatio", "xMidYMid meet")
+            .style("width", "100%")
+            .style("height", "100%")
+            .append("g")
+            .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        const x = d3.scaleBand()
+            .domain(emotions)
+            .range([0, width])
+            .padding(0.2);
+
+        const y = d3.scaleLinear()
+            .domain([0, 1])
+            .nice()
+            .range([height, 0]);
+
+        // Add X-axis
+        svg.append("g")
+            .attr("transform", `translate(0,${height})`)
+            .call(d3.axisBottom(x))
+            .selectAll("text")
+            .style("text-anchor", "middle")
+            .style("font-size", "12px")
+            .attr("dy", "1.5em");
+
+        // Add Y-axis with specified tick values and formatting
+        svg.append("g")
+            .call(d3.axisLeft(y)
+                .ticks(5)
+                .tickValues([0, 0.2, 0.4, 0.6, 0.8, 1])
+                .tickFormat(d => `${d * 100}%`) // Format ticks as percentages without decimals
+            );
+
+        const emotionScores = emotions.map(emotion => ({
+            emotion: emotion,
+            score: +sentenceData[emotion] || 0
+        }));
+
+        svg.selectAll(".bar")
+            .data(emotionScores)
+            .enter().append("rect")
+            .attr("x", d => x(d.emotion))
+            .attr("y", d => y(d.score))
+            .attr("width", x.bandwidth())
+            .attr("height", d => height - y(d.score))
+            .style("fill", d => emotionColors[d.emotion]);
+
+        svg.selectAll(".label")
+            .data(emotionScores)
+            .enter().append("text")
+            .attr("x", d => x(d.emotion) + x.bandwidth() / 2)
+            .attr("y", d => y(d.score) - 5)
+            .attr("text-anchor", "middle")
+            .style("font-size", "12px")
+            .text(d => (d.score > 0 ? `${Math.round(d.score * 100)}%` : "")); // Display as an integer percentage
+    }         
     
     // Render the steam graph
     createSteamGraph(data);
