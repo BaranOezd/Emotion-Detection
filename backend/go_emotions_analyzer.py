@@ -1,7 +1,7 @@
 import csv
 import os
 import nltk
-
+import re
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
 
 class GoEmotionsAnalyzer:
@@ -29,8 +29,7 @@ class GoEmotionsAnalyzer:
         :return: A dictionary with emotions and their associated probabilities
         """
         results = self.emotion_pipeline(sentence)
-        emotion_scores = {result['label']: result['score'] for result in results[0]}
-        return emotion_scores
+        return {result['label']: result['score'] for result in results[0]}
 
     def batch_analyze(self, sentences):
         """
@@ -56,20 +55,34 @@ class GoEmotionsAnalyzer:
         results = self.batch_analyze(sentences)
 
         # Get the current script directory
-        script_dir = os.path.dirname(__file__)
+        script_dir = os.path.dirname(os.path.abspath(__file__))
         output_csv_path = script_dir
 
         # Save results to CSV
-        output_csv_path = os.path.join(script_dir, output_csv)
-        with open(output_csv_path, mode="w", newline="", encoding="utf-8") as file:
-            writer = csv.writer(file)
-            writer.writerow(["Sentence"] + [label.capitalize() for label in self.emotion_labels])
-            for sentence, emotion_scores in zip(sentences, results):
-                row = [sentence] + [f"{emotion_scores.get(emotion, 0.0):.3f}" for emotion in self.emotion_labels]
-                writer.writerow(row)
+        try:
+            output_csv_path = os.path.join(script_dir, output_csv)
+            with open(output_csv_path, mode="w", newline="", encoding="utf-8") as file:
+                writer = csv.writer(file)
+                writer.writerow(["Sentence"] + [label.capitalize() for label in self.emotion_labels])
+                for sentence, emotion_scores in zip(sentences, results):
+                    row = [sentence] + [f"{emotion_scores.get(emotion, 0.0):.3f}" for emotion in self.emotion_labels]
+                    writer.writerow(row)
+            print(f"Emotion analysis results saved to {output_csv_path}")
+        except Exception as e:
+            print(f"Error saving CSV: {e}")
 
-        print(f"Emotion analysis results saved to {output_csv_path}")
+def preprocess_paragraph(paragraph):
+    """
+    Preprocess text to normalize spaces and punctuation.
+    :param paragraph: Input paragraph as a string
+    :return: Cleaned paragraph
+    """
+    # Add a space after sentence-ending punctuation if it is missing
+    paragraph = re.sub(r'(?<=[.!?])(?=[^\s])', ' ', paragraph)
 
+    # Normalize quotation marks
+    paragraph = paragraph.replace("“", '"').replace("”", '"').replace("‘", "'").replace("’", "'")
+    return paragraph.strip()
 
 def read_sentences_from_file(file_path):
     """
@@ -82,17 +95,16 @@ def read_sentences_from_file(file_path):
     with open(file_path, mode="r", encoding="utf-8") as file:
         for line in file:
             if line.strip():  # Ignore empty lines
-                # Use NLTK's sent_tokenize to split paragraphs into sentences
-                sentences.extend(nltk.sent_tokenize(line.strip()))
+                cleaned_line = preprocess_paragraph(line.strip())
+                sentences.extend(nltk.sent_tokenize(cleaned_line))
     return sentences
-
 
 if __name__ == "__main__":
     # Initialize the GoEmotionsAnalyzer
     analyzer = GoEmotionsAnalyzer()
 
     # Path to the input text file
-    input_file = "backend\\sentences.txt"
+    input_file = os.path.join("backend", "sentences.txt")
 
     print(f"Looking for file in: {os.getcwd()}")
 

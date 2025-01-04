@@ -1,17 +1,8 @@
 Sentence,Anger,Disgust,Fear,Joy,Neutral,Sadness,Surprise
-"""You’re a wizard, Harry,"" Hagrid said with a tone of finality.",0.053,0.390,0.008,0.004,0.529,0.006,0.009
-Harry stared at him in disbelief.,0.050,0.148,0.133,0.004,0.051,0.004,0.609
-"""I’m a what?""",0.016,0.008,0.006,0.003,0.011,0.004,0.953
-he finally managed to stammer.,0.003,0.003,0.003,0.079,0.814,0.014,0.084
-"""A wizard, o’ course,"" said Hagrid.",0.030,0.683,0.184,0.003,0.080,0.007,0.012
-"""An’ a thumpin’ good one, I’d say, once you’ve been trained up a bit.""",0.024,0.084,0.009,0.046,0.823,0.007,0.006
-Harry’s head was spinning.,0.093,0.039,0.090,0.005,0.158,0.087,0.528
-"He had spent eleven years being told he was nothing special, just a burden, an ordinary boy.",0.032,0.486,0.012,0.004,0.344,0.111,0.011
-And now this giant was telling him he belonged to some magical world?,0.145,0.067,0.007,0.007,0.106,0.009,0.659
-He tried to protest.,0.531,0.441,0.010,0.001,0.007,0.008,0.001
-"""But I can’t be a wizard,"" Harry insisted.",0.043,0.146,0.102,0.003,0.635,0.064,0.006
-"""I mean, I’m just... Harry.",0.042,0.218,0.039,0.008,0.638,0.017,0.038
-"Just Harry.""",0.022,0.032,0.008,0.003,0.913,0.010,0.012
-Hagrid let out a deep laugh.,0.007,0.034,0.001,0.617,0.321,0.013,0.007
-"""You’ll see,"" he said, ""just wait until you get yer letter and go to Hogwarts.",0.008,0.010,0.004,0.004,0.969,0.002,0.003
-"You’ll fit right in.""",0.007,0.005,0.002,0.010,0.969,0.002,0.004
+"Harry looked up at Hagrid, his mouth open.",0.012,0.936,0.028,0.001,0.013,0.007,0.003
+"""Everyone knows yer the famous Harry Potter,"" said Hagrid.",0.011,0.014,0.004,0.047,0.903,0.007,0.015
+"""Why, I'd bet my las' Knut that Dumbledore left yeh the letter with yer aunt an' uncle, hopin' they'd tell yeh.",0.069,0.029,0.022,0.016,0.784,0.014,0.067
+"Yeh've heard o' Hogwarts, o' course? """,0.042,0.110,0.084,0.028,0.519,0.019,0.199
+"""Er — no,"" said Harry.",0.102,0.166,0.096,0.004,0.581,0.031,0.020
+Hagrid looked shocked.,0.004,0.004,0.007,0.001,0.007,0.001,0.976
+"""Sorry,"" Harry added quickly.",0.005,0.013,0.010,0.003,0.101,0.824,0.044
