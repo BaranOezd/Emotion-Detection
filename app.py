@@ -1,32 +1,25 @@
-from flask import Flask, send_from_directory, render_template
 import os
+from flask import Flask, render_template, send_from_directory
 
-# Initialize Flask app
-app = Flask(__name__, template_folder='./frontend', static_folder='./frontend')
+app = Flask(__name__, template_folder='./frontend')
 
 # Route for the main HTML page
 @app.route('/')
 def index():
     return render_template('index.html')
 
-# Route to serve static files like CSS, JS, and assets in the frontend folder
-@app.route('/static/<path:filename>')
-def static_files(filename):
-    return send_from_directory('./frontend', filename)
+# Route to serve CSS and JS files
+@app.route('/<path:filename>')
+def serve_files(filename):
+    frontend_folder = os.path.join(os.path.dirname(__file__), 'frontend')
+    return send_from_directory(frontend_folder, filename)
 
 # Route to serve files from the backend folder
 @app.route('/backend/<path:filename>')
 def backend_files(filename):
-    # Path to the backend folder relative to this script
-    script_dir = os.path.dirname(__file__)
-    backend_folder = os.path.join(script_dir, "backend")
-    if not os.path.exists(backend_folder):
-        return f"Backend folder not found: {backend_folder}", 404
+    backend_folder = os.path.join(os.path.dirname(__file__), 'backend')
     return send_from_directory(backend_folder, filename)
 
 if __name__ == '__main__':
-    # Start the Flask server in debug mode
     app.run(debug=True)
-
-  #TODO: Update this class to the new backend changes + 
-  # unclicking function of the barchart + hover color change bug
+    
