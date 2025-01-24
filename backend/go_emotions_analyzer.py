@@ -53,9 +53,13 @@ def preprocess_paragraph(paragraph):
   
     # Regex to divide sentences logically
     paragraph = re.sub(r'(?<=[.!?])(?=[^\s])', ' ', paragraph)
+    paragraph = re.sub(r'\.\.\.(?!\s)', '…', paragraph)  
 
     # Normalize quotation marks
     paragraph = paragraph.replace("“", '"').replace("”", '"').replace("‘", "'").replace("’", "'")
+    
+    # Restore the ellipses from the placeholder
+    paragraph = paragraph.replace('<<ELLIPSIS>>', '...')
     return paragraph.strip()
 
 def read_sentences_from_file(file_path):
