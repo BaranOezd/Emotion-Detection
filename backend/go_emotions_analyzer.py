@@ -6,23 +6,44 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipe
 
 class GoEmotionsAnalyzer:
     def __init__(self, model_name="j-hartmann/emotion-english-distilroberta-base"):
-    
-        print(f"Loading model '{model_name}'...")
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModelForSequenceClassification.from_pretrained(model_name)
-        self.emotion_pipeline = pipeline("text-classification", model=self.model, tokenizer=self.tokenizer, top_k=None)
-        print("Model loaded successfully.")
+        """
+        Initialize the analyzer without loading the model immediately.
+        """
+        self.model_name = model_name
+        self.tokenizer = None
+        self.model = None
+        self.emotion_pipeline = None
+        self.emotion_labels = None
 
-        # Extract emotion labels from the model configuration
-        self.emotion_labels = list(self.model.config.id2label.values())
+    def _load_model(self):
+        """
+        Load the model and tokenizer if they are not already loaded.
+        """
+        if self.model is None or self.tokenizer is None:
+            print(f"Loading model '{self.model_name}'...")
+            try:
+                self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+                self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name)
+                self.emotion_pipeline = pipeline("text-classification", model=self.model, tokenizer=self.tokenizer, top_k=None)
+                self.emotion_labels = list(self.model.config.id2label.values())
+                print("Model loaded successfully.")
+            except Exception as e:
+                print(f"Error loading model: {e}")
+                raise
 
     def analyze_emotions(self, sentence):
-    
+        """
+        Analyze emotions for a single sentence.
+        """
+        self._load_model()  # Ensure the model is loaded
         results = self.emotion_pipeline(sentence)
         return {result['label']: result['score'] for result in results[0]}
 
     def batch_analyze(self, sentences):
-     
+        """
+        Analyze emotions for a batch of sentences.
+        """
+        self._load_model()  # Ensure the model is loaded
         print(f"Starting batch analysis for {len(sentences)} sentences...")
         results = []
         for i, sentence in enumerate(sentences, start=1):
@@ -31,14 +52,16 @@ class GoEmotionsAnalyzer:
         return results
 
     def batch_analyze_and_save_to_csv(self, sentences, output_csv="emotion_analysis.csv"):
-       
+        """
+        Analyze emotions for a batch of sentences and save the results to a CSV file.
+        """
+        self._load_model()  # Ensure the model is loaded
         results = self.batch_analyze(sentences)
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        output_csv_path = script_dir
+        backend_folder = os.path.join(os.path.dirname(os.path.dirname(__file__)), "backend")
+        output_csv_path = os.path.join(backend_folder, output_csv)
 
         # Save results to CSV
         try:
-            output_csv_path = os.path.join(script_dir, output_csv)
             with open(output_csv_path, mode="w", newline="", encoding="utf-8") as file:
                 writer = csv.writer(file)
                 writer.writerow(["Sentence"] + [label.capitalize() for label in self.emotion_labels])
@@ -49,35 +72,34 @@ class GoEmotionsAnalyzer:
         except Exception as e:
             print(f"Error saving CSV: {e}")
 
-def preprocess_paragraph(paragraph):
-  
-    # Regex to divide sentences logically
-    paragraph = re.sub(r'(?<=[.!?])(?=[^\s])', ' ', paragraph)
-    paragraph = re.sub(r'\.\.\.(?!\s)', '…', paragraph)  
+    def analyze_dynamic_text(self, text, output_csv="emotion_analysis.csv"):
+        """
+        Analyze dynamically provided text and save the results to a CSV file.
+        """
+        self._load_model()  # Ensure the model is loaded
+        # Preprocess the text
+        sentences = self.preprocess_paragraph(text, ellipsis_placeholder="<<ELLIPSIS>>")
+        # Analyze and save to CSV
+        self.batch_analyze_and_save_to_csv(sentences, output_csv)
+        # Return the results for the frontend
+        return self.batch_analyze(sentences)
 
-    # Normalize quotation marks
-    paragraph = paragraph.replace("“", '"').replace("”", '"').replace("‘", "'").replace("’", "'")
-    
-    # Restore the ellipses from the placeholder
-    paragraph = paragraph.replace('<<ELLIPSIS>>', '...')
-    return paragraph.strip()
+    def preprocess_paragraph(self, paragraph, ellipsis_placeholder="<<ELLIPSIS>>"):
+        """
+        Preprocess a paragraph of text.
 
-def read_sentences_from_file(file_path):
-   
-    sentences = []
-    with open(file_path, mode="r", encoding="utf-8") as file:
-        for line in file:
-            if line.strip():  # Ignore empty lines
-                cleaned_line = preprocess_paragraph(line.strip())
-                sentences.extend(nltk.sent_tokenize(cleaned_line))
-    return sentences
+        Args:
+            paragraph (str): The input paragraph.
+            ellipsis_placeholder (str): Placeholder for ellipses.
 
-if __name__ == "__main__":
-    
-    # Initialize the GoEmotionsAnalyzer
-    analyzer = GoEmotionsAnalyzer()
-    input_file = os.path.join("backend", "sentences.txt")
-    sentences = read_sentences_from_file(input_file)
-
-    # Batch sentence analysis and save the results to a CSV file
-    analyzer.batch_analyze_and_save_to_csv(sentences, output_csv="emotion_analysis.csv")
+        Returns:
+            list: A list of preprocessed sentences.
+        """
+        # Regex to divide sentences logically
+        paragraph = re.sub(r'(?<=[.!?])(?=[^\s])', ' ', paragraph)
+        paragraph = re.sub(r'\.\.\.(?!\s)', '…', paragraph)
+        # Normalize quotation marks
+        paragraph = paragraph.replace("“", '"').replace("”", '"').replace("‘", "'").replace("’", "'")
+        # Restore the ellipses from the placeholder
+        paragraph = paragraph.replace(ellipsis_placeholder, '...')
+        return nltk.sent_tokenize(paragraph.strip())

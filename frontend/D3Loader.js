@@ -268,7 +268,45 @@ document.getElementById("uploadButton").addEventListener("click", function () {
     // Add your upload logic here
 });
 
+// Add event listener for the Analyze button
 document.getElementById("analyzeButton").addEventListener("click", function () {
-    alert("Analyze button clicked!");
-    // Add your analyze logic here
+    const textInput = document.getElementById("textInput").value;
+
+    if (textInput.trim() === "") {
+        alert("Please enter some text to analyze.");
+        return;
+    }
+
+    // Send the text to the backend for analysis
+    analyzeText(textInput);
 });
+
+// Function to send text to the backend
+function analyzeText(text) {
+    fetch("/analyze", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text: text }),
+    })
+        .then((response) => response.json())
+        .then((data) => {
+            console.log("Analysis results:", data);
+            // Update the visualization with the new data
+            updateVisualization(data);
+        })
+        .catch((error) => {
+            console.error("Error analyzing text:", error);
+        });
+}
+
+// Function to update the visualization with new data
+function updateVisualization(data) {
+    // Clear existing charts
+    d3.select("#chart").html("");
+    d3.select("#steamGraph").html("");
+
+    // Update the charts with the new data
+    // (You can reuse your existing chart update logic here)
+}
