@@ -17,8 +17,10 @@ d3.csv("/backend/emotion_analysis.csv").then(function (data) {
     let lastClickedSentence = null;
 
     // Display the list of sentences
-    const sentencesDiv = d3.select("#sentences");
-    sentencesDiv.selectAll(".sentence-list-item")
+    const sentenceList = d3.select(".sentence-list"); // Select the existing container
+
+    // Populate the sentences inside the container
+    sentenceList.selectAll(".sentence-list-item")
         .data(data)
         .enter()
         .append("div")
@@ -56,11 +58,13 @@ d3.csv("/backend/emotion_analysis.csv").then(function (data) {
             }
         });
 
+    // Function to clear the bar chart
     function clearBarChart() {
         const chartDiv = d3.select("#chart");
         chartDiv.html(""); // Clear existing chart
     }
 
+    // Function to update the bar chart
     function updateBarChart(sentenceData) {
         const chartDiv = d3.select("#chart");
         chartDiv.html(""); // Clear existing chart
@@ -126,23 +130,24 @@ d3.csv("/backend/emotion_analysis.csv").then(function (data) {
             .attr("text-anchor", "middle")
             .style("font-size", "12px")
             .text(d => (d.score > 0 ? `${Math.round(d.score * 100)}%` : "")); // Display as an integer percentage
-    }         
-    
+    }
+
     // Render the steam graph
     createSteamGraph(data);
 
+    // Function to create the steam graph
     function createSteamGraph(data) {
         // Filter out invalid rows
         data = data.filter(d => d.Sentence && d.Sentence.trim() !== "");
-    
+
         const container = d3.select("#steamGraph");
         const margin = { top: 20, right: 30, bottom: 100, left: 40 }; // Increased bottom margin for legend and x-axis spacing
         const width = container.node().clientWidth - margin.left - margin.right;
         const height = container.node().clientHeight - margin.top - margin.bottom;
-    
+
         // Define height for legend
         const legendHeight = 50;
-    
+
         const svg = container.append("svg")
             .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom + legendHeight}`)
             .attr("preserveAspectRatio", "xMidYMid meet")
@@ -150,36 +155,36 @@ d3.csv("/backend/emotion_analysis.csv").then(function (data) {
             .style("height", "100%")
             .append("g")
             .attr("transform", `translate(${margin.left},${margin.top})`);
-    
+
         const x = d3.scaleLinear()
             .domain([1, data.length])
             .range([0, width]);
-    
+
         const y = d3.scaleLinear()
             .domain([0, 1])
             .nice()
             .range([height, 0]);
-    
+
         // X-Axis
         svg.append("g")
             .attr("transform", `translate(0,${height})`)
             .call(d3.axisBottom(x).ticks(data.length).tickFormat(d => `${d}`))
             .selectAll("text")
             .attr("dy", "1.5em"); // Add padding to move labels down
-    
+
         // Y-Axis
         svg.append("g")
             .call(d3.axisLeft(y).ticks(5).tickValues([0, 0.2, 0.4, 0.6, 0.8, 1]).tickFormat(d3.format(".1f")));
-    
+
         // State variable to track isolated line
         let isolatedEmotion = null;
-    
+
         // Add lines for each emotion
         emotions.forEach(emotion => {
             const line = d3.line()
                 .x((_, i) => x(i + 1))
                 .y(d => y(+d[emotion]));
-    
+
             svg.append("path")
                 .datum(data)
                 .attr("fill", "none")
@@ -198,18 +203,18 @@ d3.csv("/backend/emotion_analysis.csv").then(function (data) {
                     }
                 });
         });
-    
+
         // Add legend dynamically below the graph
         const legend = svg.append("g")
             .attr("class", "legend")
             .attr("transform", `translate(0, ${height + 50})`); // Added extra space below the x-axis labels
-    
+
         const legendItems = emotions.map((emotion, i) => ({
             emotion,
             color: emotionColors[emotion],
             x: i * 100, // Horizontal spacing for each legend item
         }));
-    
+
         // Add legend rectangles
         legend.selectAll(".legend-rect")
             .data(legendItems)
@@ -232,7 +237,7 @@ d3.csv("/backend/emotion_analysis.csv").then(function (data) {
                     isolatedEmotion = d.emotion;
                 }
             });
-    
+
         // Add legend text
         legend.selectAll(".legend-text")
             .data(legendItems)
@@ -255,4 +260,15 @@ d3.csv("/backend/emotion_analysis.csv").then(function (data) {
                 }
             });
     }
+});
+
+// Add event listeners for the buttons
+document.getElementById("uploadButton").addEventListener("click", function () {
+    alert("Upload button clicked!");
+    // Add your upload logic here
+});
+
+document.getElementById("analyzeButton").addEventListener("click", function () {
+    alert("Analyze button clicked!");
+    // Add your analyze logic here
 });
