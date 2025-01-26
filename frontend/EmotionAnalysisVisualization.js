@@ -206,37 +206,51 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Function to handle the Upload button
     function handleFileUpload() {
-
+        console.log("Upload button clicked"); // Debug log
         const fileInput = document.createElement("input");
         fileInput.type = "file";
-        fileInput.accept = ".txt";
+        fileInput.accept = ".txt"; // Accept only .txt files
         fileInput.click();
-
+    
         fileInput.onchange = () => {
             const file = fileInput.files[0];
-            if (file) {
-                const formData = new FormData();
-                formData.append("file", file);
-
-                fetch("/upload", {
-                    method: "POST",
-                    body: formData,
+            if (!file) {
+                alert("No file selected. Please select a valid .txt file.");
+                return;
+            }
+    
+            console.log("File selected:", file.name); // Debug log
+            const formData = new FormData();
+            formData.append("file", file);
+    
+            // Send the file to the backend for analysis
+            fetch("/upload", {
+                method: "POST",
+                body: formData,
+            })
+                .then((response) => {
+                    console.log("Received response status:", response.status); // Debug log
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
                 })
-                .then((response) => response.json())
                 .then((data) => {
+                    console.log("Backend response received:", data); // Debug log
                     if (data.error) {
-                        alert("Error: " + data.error);
-                        console.error(data.error);
+                        alert(`Error from backend: ${data.error}`);
+                    } else if (data.results) {
+                        console.log("Analysis results:", data.results);
+                        updateVisualization(data.results); // Update visualization
+                        updateSentenceList(data.results); // Update sentence list
                     } else {
-                        updateVisualization(data.results);
-                        updateSentenceList(data.results);
+                        alert("Unexpected response format from backend.");
                     }
                 })
                 .catch((error) => {
-                    console.error("Error uploading file:", error);
-                    alert("An error occurred while uploading the file.");
+                    console.error("Error during file upload:", error);
+                    alert("An error occurred while uploading the file. Please try again.");
                 });
-            }
         };
     }
 
