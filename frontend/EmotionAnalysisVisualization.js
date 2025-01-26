@@ -186,187 +186,216 @@ d3.csv("/backend/emotion_analysis.csv").then(function (data) {
     visualization.createSteamGraph();
 });
 
-// Function to handle text input analysis and update visualization dynamically
-document.getElementById("analyzeButton").addEventListener("click", function () {
-    const textInput = document.getElementById("textInput").value;
+document.addEventListener("DOMContentLoaded", () => {
+    // Bind Analyze button
+    const analyzeButton = document.getElementById("analyzeButton");
+    analyzeButton.addEventListener("click", handleAnalyzeButton);
 
-    if (textInput.trim() === "") {
-        alert("Please enter some text to analyze.");
-        return;
+    const uploadButton = document.getElementById("uploadButton");
+    uploadButton.addEventListener("click", handleFileUpload);
+
+    // Function to handle the Analyze button
+    function handleAnalyzeButton() {
+        const textInput = document.getElementById("textInput").value.trim();
+        if (!textInput) {
+            alert("Please enter some text to analyze.");
+            return;
+        }
+        analyzeText(textInput);
     }
 
-    // Clear previous analysis and graphs
-    clearPreviousAnalysis();
+    // Function to handle the Upload button
+    function handleFileUpload() {
 
-    // Send the text to the backend for analysis
-    analyzeText(textInput);
+        const fileInput = document.createElement("input");
+        fileInput.type = "file";
+        fileInput.accept = ".txt";
+        fileInput.click();
+
+        fileInput.onchange = () => {
+            const file = fileInput.files[0];
+            if (file) {
+                const formData = new FormData();
+                formData.append("file", file);
+
+                fetch("/upload", {
+                    method: "POST",
+                    body: formData,
+                })
+                .then((response) => response.json())
+                .then((data) => {
+                    if (data.error) {
+                        alert("Error: " + data.error);
+                        console.error(data.error);
+                    } else {
+                        updateVisualization(data.results);
+                        updateSentenceList(data.results);
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error uploading file:", error);
+                    alert("An error occurred while uploading the file.");
+                });
+            }
+        };
+    }
+
+    // Function to analyze text via backend
+    function analyzeText(text) {
+        fetch("/analyze", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ text }),
+        })
+        .then((response) => response.json())
+        .then((data) => {
+            if (data.error) {
+                alert("Error: " + data.error);
+                console.error(data.error);
+            } else {
+                updateVisualization(data.results);
+                updateSentenceList(data.results);
+            }
+        })
+        .catch((error) => {
+            console.error("Error analyzing text:", error);
+        });
+    }
+
+    // Function to update the visualization dynamically
+    function updateVisualization(results) {
+        d3.select("#chart").html("");
+        d3.select("#steamGraph").html("");
+        updateBarChart(results);
+        updateSteamGraph(results);
+    }
+
+    // Function to update the sentence list dynamically
+    function updateSentenceList(results) {
+        const sentenceList = d3.select(".sentence-list");
+        sentenceList.html("");
+
+        sentenceList.selectAll(".sentence-list-item")
+            .data(results)
+            .enter()
+            .append("div")
+            .attr("class", "sentence-list-item")
+            .text((d, i) => `${i + 1}. ${d.sentence}`)
+            .on("click", function (event, d) {
+                d3.selectAll(".sentence-list-item").classed("clicked", false).style("color", "");
+                d3.select(this).classed("clicked", true).style("color", "#c00");
+                updateBarChart([d]);
+            });
+    }
+
+    // Function to update the bar chart
+    function updateBarChart(data) {
+        // Existing bar chart update function (from previous code)
+        const emotions = Object.keys(data[0].emotions);
+        const emotionScores = emotions.map((emotion) => ({
+            emotion,
+            score: data[0].emotions[emotion],
+        }));
+
+        const chartDiv = d3.select("#chart");
+        chartDiv.html("");
+
+        const margin = { top: 20, right: 30, bottom: 100, left: 50 };
+        const width = chartDiv.node().clientWidth - margin.left - margin.right;
+        const height = chartDiv.node().clientHeight - margin.top - margin.bottom;
+
+        const svg = chartDiv.append("svg")
+            .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
+            .attr("preserveAspectRatio", "xMidYMid meet")
+            .style("width", "100%")
+            .style("height", "100%")
+            .append("g")
+            .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        const x = d3.scaleBand()
+            .domain(emotions)
+            .range([0, width])
+            .padding(0.2);
+
+        const y = d3.scaleLinear()
+            .domain([0, 1])
+            .nice()
+            .range([height, 0]);
+
+        svg.append("g")
+            .attr("transform", `translate(0,${height})`)
+            .call(d3.axisBottom(x))
+            .selectAll("text")
+            .style("text-anchor", "middle")
+            .style("font-size", "12px")
+            .attr("dy", "1.5em");
+
+        svg.append("g")
+            .call(d3.axisLeft(y).ticks(5).tickValues([0, 0.2, 0.4, 0.6, 0.8, 1]).tickFormat(d => `${d * 100}%`));
+
+        svg.selectAll(".bar")
+            .data(emotionScores)
+            .enter().append("rect")
+            .attr("x", d => x(d.emotion))
+            .attr("y", d => y(d.score))
+            .attr("width", x.bandwidth())
+            .attr("height", d => height - y(d.score))
+            .style("fill", "#2196F3");
+
+        svg.selectAll(".label")
+            .data(emotionScores)
+            .enter().append("text")
+            .attr("x", d => x(d.emotion) + x.bandwidth() / 2)
+            .attr("y", d => y(d.score) - 5)
+            .attr("text-anchor", "middle")
+            .style("font-size", "12px")
+            .text(d => `${Math.round(d.score * 100)}%`);
+    }
+
+    // Function to update the steam graph
+    function updateSteamGraph(data) {
+        const container = d3.select("#steamGraph");
+        const margin = { top: 20, right: 30, bottom: 100, left: 40 };
+        const width = container.node().clientWidth - margin.left - margin.right;
+        const height = container.node().clientHeight - margin.top - margin.bottom;
+
+        const svg = container.append("svg")
+            .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
+            .attr("preserveAspectRatio", "xMidYMid meet")
+            .style("width", "100%")
+            .style("height", "100%")
+            .append("g")
+            .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        const x = d3.scaleLinear()
+            .domain([1, data.length])
+            .range([0, width]);
+
+        const y = d3.scaleLinear()
+            .domain([0, 1])
+            .nice()
+            .range([height, 0]);
+
+        svg.append("g")
+            .attr("transform", `translate(0,${height})`)
+            .call(d3.axisBottom(x).ticks(data.length).tickFormat(d => `${d}`));
+
+        svg.append("g")
+            .call(d3.axisLeft(y).ticks(5).tickFormat(d3.format(".1f")));
+
+        data[0].emotions.forEach(emotion => {
+            const line = d3.line()
+                .x((_, i) => x(i + 1))
+                .y(d => y(d[emotion]));
+
+            svg.append("path")
+                .datum(data)
+                .attr("fill", "none")
+                .attr("stroke", "#F44336")
+                .attr("stroke-width", 4)
+                .attr("d", line);
+        });
+    }
 });
-
-// Function to clear previous analysis and graphs
-function clearPreviousAnalysis() {
-    // Clear the charts
-    d3.select("#chart").html("");
-    d3.select("#steamGraph").html("");
-
-    // Optionally, clear the text input field
-    const textInput = document.getElementById("textInput");
-    textInput.value = ''; // Optionally clear the text input after each analysis
-}
-
-// Function to send text to the backend for analysis
-function analyzeText(text) {
-    fetch("/analyze", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ text: text }),
-    })
-    .then((response) => response.json())
-    .then((data) => {
-        // Directly update visualization without page reload
-        updateVisualization(data);
-        
-        // Update sentence list dynamically
-        updateSentenceList(data);
-    })
-    .catch((error) => {
-        console.error("Error analyzing text:", error);
-    });
-}
-
-// Add a new function to update sentence list dynamically
-function updateSentenceList(data) {
-    const sentenceList = d3.select(".sentence-list");
-    
-    // Clear existing sentences
-    sentenceList.html("");
-    
-    // Populate with new sentences
-    sentenceList.selectAll(".sentence-list-item")
-        .data(data.sentences)
-        .enter()
-        .append("div")
-        .attr("class", "sentence-list-item")
-        .text(d => d.Sentence);
-}
-
-// Function to update the visualization with new data (bar chart and steam graph)
-function updateVisualization(data) {
-    // Update the bar chart
-    updateBarChart(data);
-
-    // Update the steam graph
-    updateSteamGraph(data);
-}
-
-// Function to update the bar chart with new data
-function updateBarChart(data) {
-    const emotions = Object.keys(data.emotions);
-    const emotionScores = emotions.map(emotion => ({
-        emotion: emotion,
-        score: data.emotions[emotion]
-    }));
-
-    const chartDiv = d3.select("#chart");
-    chartDiv.html(""); // Clear existing chart
-
-    const margin = { top: 20, right: 30, bottom: 100, left: 50 };
-    const width = chartDiv.node().clientWidth - margin.left - margin.right;
-    const height = chartDiv.node().clientHeight - margin.top - margin.bottom;
-
-    const svg = chartDiv.append("svg")
-        .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
-        .attr("preserveAspectRatio", "xMidYMid meet")
-        .style("width", "100%")
-        .style("height", "100%")
-        .append("g")
-        .attr("transform", `translate(${margin.left},${margin.top})`);
-
-    const x = d3.scaleBand()
-        .domain(emotions)
-        .range([0, width])
-        .padding(0.2);
-
-    const y = d3.scaleLinear()
-        .domain([0, 1])
-        .nice()
-        .range([height, 0]);
-
-    svg.append("g")
-        .attr("transform", `translate(0,${height})`)
-        .call(d3.axisBottom(x))
-        .selectAll("text")
-        .style("text-anchor", "middle")
-        .style("font-size", "12px")
-        .attr("dy", "1.5em");
-
-    svg.append("g")
-        .call(d3.axisLeft(y).ticks(5).tickValues([0, 0.2, 0.4, 0.6, 0.8, 1]).tickFormat(d => `${d * 100}%`));
-
-    svg.selectAll(".bar")
-        .data(emotionScores)
-        .enter().append("rect")
-        .attr("x", d => x(d.emotion))
-        .attr("y", d => y(d.score))
-        .attr("width", x.bandwidth())
-        .attr("height", d => height - y(d.score))
-        .style("fill", "#2196F3"); // Add color mapping here if necessary
-
-    svg.selectAll(".label")
-        .data(emotionScores)
-        .enter().append("text")
-        .attr("x", d => x(d.emotion) + x.bandwidth() / 2)
-        .attr("y", d => y(d.score) - 5)
-        .attr("text-anchor", "middle")
-        .style("font-size", "12px")
-        .text(d => `${Math.round(d.score * 100)}%`);
-}
-
-// Function to update the steam graph with new data
-function updateSteamGraph(data) {
-    const emotions = Object.keys(data.emotions);
-    const container = d3.select("#steamGraph");
-    const margin = { top: 20, right: 30, bottom: 100, left: 40 };
-    const width = container.node().clientWidth - margin.left - margin.right;
-    const height = container.node().clientHeight - margin.top - margin.bottom;
-    const legendHeight = 50;
-
-    const svg = container.append("svg")
-        .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom + legendHeight}`)
-        .attr("preserveAspectRatio", "xMidYMid meet")
-        .style("width", "100%")
-        .style("height", "100%")
-        .append("g")
-        .attr("transform", `translate(${margin.left},${margin.top})`);
-
-    const x = d3.scaleLinear()
-        .domain([1, data.sentences.length])
-        .range([0, width]);
-
-    const y = d3.scaleLinear()
-        .domain([0, 1])
-        .nice()
-        .range([height, 0]);
-
-    svg.append("g")
-        .attr("transform", `translate(0,${height})`)
-        .call(d3.axisBottom(x).ticks(data.sentences.length).tickFormat(d => `${d}`));
-
-    svg.append("g")
-        .call(d3.axisLeft(y).ticks(5).tickFormat(d3.format(".1f")));
-
-    // Add emotion lines for steam graph
-    emotions.forEach(emotion => {
-        const line = d3.line()
-            .x((_, i) => x(i + 1))
-            .y(d => y(d[emotion]));
-
-        svg.append("path")
-            .datum(data.sentences)
-            .attr("fill", "none")
-            .attr("stroke", "#F44336") // Emotion color can be dynamic
-            .attr("stroke-width", 4)
-            .attr("d", line);
-    });
-}
