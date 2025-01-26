@@ -72,10 +72,57 @@ class GoEmotionsAnalyzer:
             print(f"Error saving CSV: {e}")
 
     def preprocess_paragraph(self, paragraph):
-        # Regex to divide sentences logically
-        paragraph = re.sub(r'(?<=[.!?])(?=[^\s])', ' ', paragraph)
+        # Normalize curly quotes to straight quotes
+        paragraph = paragraph.replace("‘", "'").replace("’", "'")
+        paragraph = paragraph.replace("“", '"').replace("”", '"')
+        paragraph = paragraph.replace("...", "…")  # Replace "..." with "…" (Unicode ellipsis)
 
-        # Normalize quotation marks
-        paragraph = paragraph.replace("“", '"').replace("”", '"').replace("‘", "'").replace("’", "'")
 
-        return nltk.sent_tokenize(paragraph.strip())
+        # Add space after punctuation (avoid splitting quotes/parentheses)
+        paragraph = re.sub(r'(?<=[.!?])(?=[^\s"\'])', ' ', paragraph)
+        
+        # Custom abbreviations to prevent false sentence splits
+        custom_abbreviations = ['mr', 'mrs', 'dr', 'vs', 'e.g', 'i.e', 'etc', 'prof', 'inc', 'st']
+        tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
+        tokenizer._params.abbrev_types.update(custom_abbreviations)
+
+        # Split into sentences
+        sentences = tokenizer.tokenize(paragraph.strip())
+
+        # Merge sentences split mid-quotation or mid-ellipsis
+        merged_sentences = []
+        buffer = ""
+        for sentence in sentences:
+            # Count quote balance
+            quote_count = sentence.count('"') + sentence.count("'")
+            # Check for ellipses
+            has_ellipsis = "..." in sentence
+
+            if buffer:
+                sentence = buffer + " " + sentence
+                buffer = ""
+
+            # If mid-quote or mid-ellipsis, add to buffer
+            if quote_count % 2 != 0 or has_ellipsis:
+                buffer = sentence
+            else:
+                merged_sentences.append(sentence)
+
+        # Handle any remaining buffer
+        if buffer:
+            merged_sentences.append(buffer)
+
+        # Post-process to merge ellipses with the previous sentence
+        final_sentences = []
+        i = 0
+        while i < len(merged_sentences):
+            sentence = merged_sentences[i]
+            # Check if the next sentence starts with ellipses
+            if i + 1 < len(merged_sentences) and merged_sentences[i + 1].strip().startswith("..."):
+                # Merge current sentence with the next one
+                sentence += " " + merged_sentences[i + 1].strip()
+                i += 1  # Skip the next sentence
+            final_sentences.append(sentence)
+            i += 1
+
+        return final_sentences
