@@ -134,13 +134,10 @@ class EmotionAnalysisVisualization {
     // Create the steam graph
     createSteamGraph() {
         const container = d3.select("#steamGraph");
-        const margin = { top: 20, right: 30, bottom: 100, left: 40 }; // Increased bottom margin for legend
+        const margin = { top: 20, right: 30, bottom: 100, left: 40 }; // Increased bottom margin for legend and x-axis spacing
         const width = container.node().clientWidth - margin.left - margin.right;
         const height = container.node().clientHeight - margin.top - margin.bottom;
-    
-        // Clear existing graph
-        container.selectAll("*").remove();
-    
+
         const svg = container.append("svg")
             .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
             .attr("preserveAspectRatio", "xMidYMid meet")
@@ -148,106 +145,39 @@ class EmotionAnalysisVisualization {
             .style("height", "100%")
             .append("g")
             .attr("transform", `translate(${margin.left},${margin.top})`);
-    
-        // X-axis scale
+
         const x = d3.scaleLinear()
             .domain([1, this.data.length])
             .range([0, width]);
-    
-        // Y-axis scale
+
         const y = d3.scaleLinear()
             .domain([0, 1])
             .nice()
             .range([height, 0]);
-    
-        // Add X-axis
+
         svg.append("g")
             .attr("transform", `translate(0,${height})`)
             .call(d3.axisBottom(x).ticks(this.data.length).tickFormat(d => `${d}`));
-    
-        // Add Y-axis
+
         svg.append("g")
             .call(d3.axisLeft(y).ticks(5).tickFormat(d3.format(".1f")));
-    
-        // Group for lines
-        const lineGroup = svg.append("g").attr("class", "lines");
-    
+
         // Add emotion lines for steam graph
         this.emotions.forEach(emotion => {
             const line = d3.line()
                 .x((_, i) => x(i + 1))
                 .y(d => y(d[emotion]));
-    
-            lineGroup.append("path")
+
+            svg.append("path")
                 .datum(this.data)
-                .attr("class", `line-${emotion}`) // Add a unique class for each emotion
                 .attr("fill", "none")
-                .attr("stroke", this.emotionColors[emotion]) // Use dynamic emotion color
+                .attr("stroke", this.emotionColors[emotion])
                 .attr("stroke-width", 4)
-                .attr("d", line)
-                .style("opacity", 1); // Ensure all lines are visible initially
-        });
-    
-        // Add legend
-        const legend = svg.append("g")
-            .attr("class", "legend")
-            .attr("transform", `translate(0,${height + 40})`); // Position legend below the graph
-    
-        // Variable to track the currently selected emotion
-        let selectedEmotion = null;
-    
-        this.emotions.forEach((emotion, i) => {
-            const legendItem = legend.append("g")
-                .attr("transform", `translate(${i * 100}, 0)`) // Space out legend items
-                .style("cursor", "pointer") // Make legend items clickable
-                .on("click", () => {
-                    if (selectedEmotion === emotion) {
-                        // If the same emotion is clicked again, reset to show all lines
-                        selectedEmotion = null;
-                        d3.selectAll(".lines path").style("opacity", 1); // Show all lines
-                    } else {
-                        // Otherwise, show only the selected line
-                        selectedEmotion = emotion;
-                        d3.selectAll(".lines path").style("opacity", 0.1); // Dim all lines
-                        d3.select(`.line-${emotion}`).style("opacity", 1); // Highlight selected line
-                    }
-                });
-    
-            // Add color square
-            legendItem.append("rect")
-                .attr("width", 18)
-                .attr("height", 18)
-                .attr("fill", this.emotionColors[emotion]);
-    
-            // Add emotion label
-            legendItem.append("text")
-                .attr("x", 24)
-                .attr("y", 9)
-                .attr("dy", "0.35em")
-                .style("font-size", "12px")
-                .text(emotion);
+                .attr("class", `line-${emotion}`)
+                .attr("d", line);
         });
     }
-    
-    /**
-     * Toggles the visibility of a specific emotion line on the steam graph.
-     * @param {string} emotion - The name of the emotion to toggle.
-     */
-    toggleEmotionVisibility(emotion) {
-        const line = d3.select(`.line-${emotion}`);
-        const currentOpacity = line.style("opacity");
-    
-        // Toggle the opacity: show only the clicked line, hide others
-        if (currentOpacity === "1") {
-            // Hide all lines except the clicked one
-            d3.selectAll(".lines path").style("opacity", 0.1); // Reduce opacity for all lines
-            line.style("opacity", 1); // Highlight the selected line
-        } else {
-            // Reset to show all lines
-            d3.selectAll(".lines path").style("opacity", 1);
-        }
-    }
-}    
+}
 
 // Initialize the class and render charts after loading CSV data
 d3.csv("/backend/emotion_analysis.csv").then(function (data) {
