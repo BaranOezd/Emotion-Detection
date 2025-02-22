@@ -134,10 +134,13 @@ class EmotionAnalysisVisualization {
     // Create the steam graph
     createSteamGraph() {
         const container = d3.select("#steamGraph");
-        const margin = { top: 20, right: 30, bottom: 100, left: 40 }; // Increased bottom margin for legend and x-axis spacing
+        const margin = { top: 40, right: 30, bottom: 80, left: 40 }; // Increased bottom margin for more space
         const width = container.node().clientWidth - margin.left - margin.right;
         const height = container.node().clientHeight - margin.top - margin.bottom;
-
+    
+        // Clear existing graph
+        container.selectAll("*").remove();
+    
         const svg = container.append("svg")
             .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
             .attr("preserveAspectRatio", "xMidYMid meet")
@@ -145,36 +148,123 @@ class EmotionAnalysisVisualization {
             .style("height", "100%")
             .append("g")
             .attr("transform", `translate(${margin.left},${margin.top})`);
-
+    
+        // Add a title
+        svg.append("text")
+            .attr("x", width / 2)
+            .attr("y", -10)
+            .attr("text-anchor", "middle")
+            .style("font-size", "16px")
+            .style("font-weight", "bold")
+            .text("Emotion Trends Over Sentences");
+    
+        // X-axis scale (sentence numbers)
         const x = d3.scaleLinear()
-            .domain([1, this.data.length])
+            .domain([1, this.data.length]) // Sentence numbers start from 1
             .range([0, width]);
-
+    
+        // Y-axis scale
         const y = d3.scaleLinear()
             .domain([0, 1])
             .nice()
             .range([height, 0]);
-
+    
+        // Add X-axis with sentence numbers (just numbers, no rotation)
         svg.append("g")
             .attr("transform", `translate(0,${height})`)
-            .call(d3.axisBottom(x).ticks(this.data.length).tickFormat(d => `${d}`));
-
+            .call(d3.axisBottom(x)
+                .ticks(this.data.length) // Show a tick for each sentence
+                .tickFormat(d => `${d}`)) // Format ticks as numbers (1, 2, 3, ...)
+            .selectAll("text") // Style X-axis labels
+            .style("text-anchor", "middle") // Center-align labels
+            .style("font-size", "12px"); // Adjust font size
+    
+        // Add Y-axis (without the baseline)
         svg.append("g")
-            .call(d3.axisLeft(y).ticks(5).tickFormat(d3.format(".1f")));
-
+            .call(d3.axisLeft(y).ticks(5).tickFormat(d3.format(".1f")))
+            .style("font-size", "14px") // Increase font size for Y-axis labels
+            .select(".domain") // Select the Y-axis baseline
+            .attr("stroke", "none"); // Hide the Y-axis baseline
+    
+        // Add horizontal grid lines
+        svg.append("g")
+            .attr("class", "grid")
+            .call(d3.axisLeft(y)
+                .ticks(5)
+                .tickSize(-width) // Extend grid lines across the width
+                .tickFormat("")) // Remove labels for grid lines
+            .style("stroke", "#ddd") // Light gray grid lines
+            .style("stroke-opacity", 0.3) // Make grid lines more transparent
+            .style("shape-rendering", "crispEdges");
+    
+        // Group for lines
+        const lineGroup = svg.append("g").attr("class", "lines");
+    
         // Add emotion lines for steam graph
         this.emotions.forEach(emotion => {
             const line = d3.line()
-                .x((_, i) => x(i + 1))
-                .y(d => y(d[emotion]));
-
-            svg.append("path")
+                .x((_, i) => x(i + 1)) // Use sentence numbers for X position
+                .y(d => y(d[emotion]))
+                .curve(d3.curveBasis); // Smooth the lines
+    
+            lineGroup.append("path")
                 .datum(this.data)
                 .attr("fill", "none")
                 .attr("stroke", this.emotionColors[emotion])
                 .attr("stroke-width", 4)
-                .attr("class", `line-${emotion}`)
-                .attr("d", line);
+                .attr("class", `line-${emotion}`) // Add a unique class for each emotion
+                .attr("d", line)
+                .style("opacity", 1); // Ensure all lines are visible initially
+        });
+    
+        // Add legend (positioned further below the graph)
+        const legend = svg.append("g")
+            .attr("class", "legend")
+            .attr("transform", `translate(0,${height + 40})`); // Increased Y position for more space
+    
+        // Variable to track the currently selected emotion
+        let selectedEmotion = null;
+    
+        this.emotions.forEach((emotion, i) => {
+            const legendItem = legend.append("g")
+                .attr("transform", `translate(${i * 100}, 0)`) // Space out legend items
+                .style("cursor", "pointer") // Make legend items clickable
+                .on("click", () => {
+                    if (selectedEmotion === emotion) {
+                        // If the same emotion is clicked again, reset to show all lines
+                        selectedEmotion = null;
+                        d3.selectAll(".lines path").style("opacity", 1); // Show all lines
+                    } else {
+                        // Otherwise, show only the selected line
+                        selectedEmotion = emotion;
+                        d3.selectAll(".lines path").style("opacity", 0.1); // Dim all lines
+                        d3.select(`.line-${emotion}`).style("opacity", 1); // Highlight selected line
+                    }
+                })
+                .on("mouseover", () => {
+                    // Highlight legend item on hover
+                    legendItem.select("rect").attr("stroke", "#000").attr("stroke-width", 2);
+                    legendItem.select("text").style("font-weight", "bold");
+                })
+                .on("mouseout", () => {
+                    // Reset legend item on mouseout
+                    legendItem.select("rect").attr("stroke", "none");
+                    legendItem.select("text").style("font-weight", "normal");
+                });
+    
+            // Add color square
+            legendItem.append("rect")
+                .attr("width", 18)
+                .attr("height", 18)
+                .attr("fill", this.emotionColors[emotion]);
+    
+            // Add emotion label
+            legendItem.append("text")
+                .attr("x", 24)
+                .attr("y", 9)
+                .attr("dy", "0.35em")
+                .style("font-size", "14px") // Increase font size for legend
+                .text(emotion);
         });
     }
 }
