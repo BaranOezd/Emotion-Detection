@@ -5,7 +5,7 @@ body, html {
     height: 100%;
     box-sizing: border-box;
     font-family: Arial, sans-serif;
-    }
+}
 
 .container {
     display: flex;
@@ -19,12 +19,19 @@ body, html {
 }
 
 .title {
-    text-align: center;
-    font-size: 1.8rem;
-    font-weight: bold;
-    margin-bottom: 10px;
-}
-
+    padding: 5px;        /* Reduce padding */
+    margin: 0;           /* Remove extra margins */
+    height: 40px;        /* Set a fixed, smaller height */
+    display: flex;
+    align-items: center; /* Center title vertically */
+    justify-content: center;
+  }
+  
+  .title h1 {
+    font-size: 24px;     /* Smaller font size */
+    margin: 0;           /* Remove default margin */
+    line-height: 1.2;
+  }
 .body {
     display: flex;
     flex-direction: row;
@@ -92,9 +99,18 @@ body, html {
     background-color: #fff;
     border-radius: 8px;
     padding: 10px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-sizing: border-box; /* Include padding in width/height calculations */
+    position: relative; /* For positioning the reset zoom button */
+}
+#legend{
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    justify-content: center;
+    padding: 10px 0; /* Add padding for better spacing */
     box-sizing: border-box; /* Include padding in width/height calculations */
 }
+
 
 #chart {
     flex: 0.6; /* Adjust bar chart height to fill remaining space */
@@ -122,4 +138,39 @@ body, html {
     resize: vertical; /* Allow vertical resizing */
     margin-bottom: 10px;
     box-sizing: border-box;
+}
+
+/* Reset Zoom Button Styling */
+.reset-zoom {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 10; /* Ensure it's above the graph */
+}
+
+.reset-zoom rect {
+    fill: #007bff; /* Button background color */
+    stroke: #0056b3; /* Button border color */
+    stroke-width: 1;
+    rx: 5; /* Rounded corners */
+    ry: 5;
+    transition: fill 0.3s ease, stroke 0.3s ease;
+}
+
+.reset-zoom rect:hover {
+    fill: #0056b3; /* Darker background on hover */
+    stroke: #004080; /* Darker border on hover */
+}
+
+.reset-zoom text {
+    fill: white; /* Text color */
+    font-size: 14px;
+    font-family: Arial, sans-serif;
+    font-weight: bold;
+    pointer-events: none; /* Prevent text from blocking clicks */
+}
+
+.reset-zoom:hover text {
+    fill: #0056b3; /* Darker background on hover */
+    stroke: #004080;
 }
