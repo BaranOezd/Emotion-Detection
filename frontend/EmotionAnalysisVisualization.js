@@ -12,7 +12,7 @@ class EmotionAnalysisVisualization {
             "Neutral": "#9E9E9E"     // Gray
         };
         this.lastClickedSentence = null;  
-        this.selectedEmotion = null;  
+        this.selectedEmotion = [];  
 
     }
 
@@ -134,307 +134,329 @@ class EmotionAnalysisVisualization {
     }
 
     // Create the steam graph
-    // Create the steam graph
-createSteamGraph() {
-    const streamContainer = d3.select("#steamGraph");
-    streamContainer.selectAll("*").remove();
-
-    const margin = { top: 40, right: 30, bottom: 40, left: 40 };
-    const width = streamContainer.node().clientWidth - margin.left - margin.right;
-    const height = streamContainer.node().clientHeight - margin.top - margin.bottom;
-
-    const svg = streamContainer.append("svg")
-        .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
-        .attr("preserveAspectRatio", "xMidYMid meet")
-        .style("width", "100%")
-        .style("height", "100%");
-
-    const g = svg.append("g")
-        .attr("transform", `translate(${margin.left},${margin.top})`);
-
-    // Add title for the stream graph
-    g.append("text")
-        .attr("x", width / 2)
-        .attr("y", -10)
-        .attr("text-anchor", "middle")
-        .style("font-size", "16px")
-        .style("font-weight", "bold")
-        .text("Emotion Trends Over Sentences");
-
-    // Prepare data and scales
-    const fullData = this.data;
-    const x = d3.scaleLinear()
-        .domain([1, fullData.length])
-        .range([0, width]);
-
-    const y = d3.scaleLinear()
-        .domain([0, 1])
-        .nice()
-        .range([height, 0]);
-
-    // Helper to sample data based on a visible domain and step value
-    const sampleData = (data, domainStart, domainEnd, step) => {
-        const sampledData = [];
-        const sampledIndices = [];
-        for (let i = domainStart - 1; i < domainEnd; i += step) {
-            if (i >= 0 && i < data.length) {
-                sampledData.push(data[i]);
-                sampledIndices.push(i + 1);
+    createSteamGraph() {
+        const streamContainer = d3.select("#steamGraph");
+        streamContainer.selectAll("*").remove();
+    
+        const margin = { top: 40, right: 30, bottom: 40, left: 40 };
+        const width = streamContainer.node().clientWidth - margin.left - margin.right;
+        const height = streamContainer.node().clientHeight - margin.top - margin.bottom;
+    
+        const svg = streamContainer.append("svg")
+            .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
+            .attr("preserveAspectRatio", "xMidYMid meet")
+            .style("width", "100%")
+            .style("height", "100%");
+    
+        const g = svg.append("g")
+            .attr("transform", `translate(${margin.left},${margin.top})`);
+    
+        // Add title for the stream graph
+        g.append("text")
+            .attr("x", width / 2)
+            .attr("y", -10)
+            .attr("text-anchor", "middle")
+            .style("font-size", "16px")
+            .style("font-weight", "bold")
+            .text("Emotion Trends Over Sentences");
+    
+        // Prepare data and scales
+        const fullData = this.data;
+        const x = d3.scaleLinear()
+            .domain([1, fullData.length])
+            .range([0, width]);
+    
+        const y = d3.scaleLinear()
+            .domain([0, 1])
+            .nice()
+            .range([height, 0]);
+    
+        // Helper to sample data based on a visible domain and step value
+        const sampleData = (data, domainStart, domainEnd, step) => {
+            const sampledData = [];
+            const sampledIndices = [];
+            for (let i = domainStart - 1; i < domainEnd; i += step) {
+                if (i >= 0 && i < data.length) {
+                    sampledData.push(data[i]);
+                    sampledIndices.push(i + 1);
+                }
             }
-        }
-        return { sampledData, sampledIndices };
-    };
-
-    // Group for drawing lines
-    const lineGroup = g.append("g").attr("class", "lines");
-
-    // --- DRAW LINES WITH TRANSITIONS ---
-    const drawLines = (sampledData, sampledIndices, xScale, immediate = true) => {
-        const lines = lineGroup.selectAll(".emotion-line")
-            .data(this.emotions);
+            return { sampledData, sampledIndices };
+        };
     
-        // Remove exiting lines instantly.
-        lines.exit().interrupt().style("opacity", 0).remove();
+        // Group for drawing lines
+        const lineGroup = g.append("g").attr("class", "lines");
     
-        // Enter new lines
-        const newLines = lines.enter()
-            .append("path")
-            .attr("class", d => `line-${d} emotion-line`)
-            .attr("fill", "none")
-            .attr("stroke", d => this.emotionColors[d])
-            .attr("stroke-width", 4)
-            // Set initial opacity based on the selected emotion (if any)
-            .style("opacity", d => (this.selectedEmotion ? (d === this.selectedEmotion ? 1 : 0.1) : 1));
+        // --- DRAW LINES WITH TRANSITIONS ---
+        const drawLines = (sampledData, sampledIndices, xScale, immediate = true) => {
+            const lines = lineGroup.selectAll(".emotion-line")
+                .data(this.emotions);
     
-        const merged = lines.merge(newLines).interrupt();
+            // Remove exiting lines instantly.
+            lines.exit().interrupt().style("opacity", 0).remove();
     
-        if (immediate) {
-            // Update instantly without any transition.
-            merged
-                .attr("d", emotion => {
-                    return d3.line()
-                        .x((_, i) => xScale(sampledIndices[i]))
-                        .y(v => y(+v[emotion] || 0))
-                        .curve(d3.curveBasis)(sampledData);
-                })
-                .style("opacity", emotion => (this.selectedEmotion ? (emotion === this.selectedEmotion ? 1 : 0.1) : 1));
-        } else {
-            // This branch is used only by the reset zoom (animated).
-            merged
-                .transition()
-                .duration(500)
-                .attr("d", emotion => {
-                    return d3.line()
-                        .x((_, i) => xScale(sampledIndices[i]))
-                        .y(v => y(+v[emotion] || 0))
-                        .curve(d3.curveBasis)(sampledData);
-                })
-                .style("opacity", emotion => (this.selectedEmotion ? (emotion === this.selectedEmotion ? 1 : 0.1) : 1));
-        }
-    };
+            // Enter new lines
+            const newLines = lines.enter()
+                .append("path")
+                .attr("class", d => `line-${d} emotion-line`)
+                .attr("fill", "none")
+                .attr("stroke", d => this.emotionColors[d])
+                .attr("stroke-width", 4)
+                // Set initial opacity based on the selected emotions array
+                .style("opacity", d =>
+                    (this.selectedEmotions && this.selectedEmotions.length > 0)
+                        ? (this.selectedEmotions.includes(d) ? 1 : 0.1)
+                        : 1
+                );
     
+            const merged = lines.merge(newLines).interrupt();
     
+            if (immediate) {
+                // Update instantly without any transition.
+                merged
+                    .attr("d", emotion => {
+                        return d3.line()
+                            .x((_, i) => xScale(sampledIndices[i]))
+                            .y(v => y(+v[emotion] || 0))
+                            .curve(d3.curveBasis)(sampledData);
+                    })
+                    .style("opacity", emotion =>
+                        (this.selectedEmotions && this.selectedEmotions.length > 0)
+                            ? (this.selectedEmotions.includes(emotion) ? 1 : 0.1)
+                            : 1
+                    );
+            } else {
+                // Animated update (used by reset zoom)
+                merged
+                    .transition()
+                    .duration(500)
+                    .attr("d", emotion => {
+                        return d3.line()
+                            .x((_, i) => xScale(sampledIndices[i]))
+                            .y(v => y(+v[emotion] || 0))
+                            .curve(d3.curveBasis)(sampledData);
+                    })
+                    .style("opacity", emotion =>
+                        (this.selectedEmotions && this.selectedEmotions.length > 0)
+                            ? (this.selectedEmotions.includes(emotion) ? 1 : 0.1)
+                            : 1
+                    );
+            }
+        };
     
-
-    // Initial drawing: calculate a step based on the width (adjust as needed)
-    let currentStep = Math.ceil(fullData.length / (width / 20));
-    let { sampledData, sampledIndices } = sampleData(fullData, 1, fullData.length, currentStep);
-    drawLines(sampledData, sampledIndices, x);
-
-    // X-axis and Y-axis
-    const xAxis = g.append("g")
-        .attr("transform", `translate(0,${height})`)
-        .call(d3.axisBottom(x)
-            .tickValues(d3.range(1, fullData.length + 1))
-            .tickFormat(d => `${d}`));
-
-    g.append("g")
-        .call(d3.axisLeft(y).ticks(5).tickFormat(d3.format(".1f")))
-        .select(".domain").attr("stroke", "none");
-
-    // Grid lines
-    g.append("g")
-        .attr("class", "grid")
-        .call(d3.axisLeft(y).ticks(5).tickSize(-width).tickFormat(""))
-        .style("stroke", "#ddd")
-        .style("stroke-opacity", 0.3);
-
-    // --- DYNAMIC MAXIMUM ZOOM ---
-    const minPixelPerSentence = 30;
-    // Use Math.ceil to ensure the maximum zoom is an integer, e.g. 14,15,16,17,18
-    const maxZoom = Math.ceil((minPixelPerSentence * (fullData.length - 1)) / width);
-
-    // Zoom behavior with clamped x-domain (between sentence 1 and last)
-    const zoom = d3.zoom()
-        .scaleExtent([1, maxZoom])
-        .translateExtent([[0, 0], [width, height]])
-        .on("zoom", (event) => {
-            const newX = event.transform.rescaleX(x);
-            const domain = newX.domain();
-            const domainStart = Math.max(1, Math.round(domain[0]));
-            const domainEnd = Math.min(fullData.length, Math.round(domain[1]));
-            const visibleWidth = newX(domainEnd) - newX(domainStart);
-            const step = Math.max(1, Math.floor((domainEnd - domainStart) / (visibleWidth / 20)));
-            const { sampledData, sampledIndices } = sampleData(fullData, domainStart, domainEnd, step);
-            drawLines(sampledData, sampledIndices, newX);
-            // When the visible range is small, force ticks to be each sentence.
-            const tickValues = (domainEnd - domainStart) < 20 ?
-                d3.range(domainStart, domainEnd + 1) :
-                null;
-            xAxis.call(d3.axisBottom(newX)
-                .tickValues(tickValues)
-                .tickFormat(d => `${d}`));
-        });
-
-    svg.call(zoom);
-
-    // --- RESET ZOOM BUTTON (reverted to original location) ---
-    const resetZoom = () => {
-        svg.transition()
-            .duration(750)
-            .call(zoom.transform, d3.zoomIdentity);
-        const { sampledData, sampledIndices } = sampleData(fullData, 1, fullData.length, currentStep);
+        // Initialize drawing
+        let currentStep = Math.ceil(fullData.length / (width / 20));
+        let { sampledData, sampledIndices } = sampleData(fullData, 1, fullData.length, currentStep);
         drawLines(sampledData, sampledIndices, x);
-        xAxis.call(d3.axisBottom(x)
-            .tickValues(d3.range(1, fullData.length + 1))
-            .tickFormat(d => `${d}`));
-    };
-
-    svg.append("g")
-        .attr("class", "reset-zoom")
-        .append("rect")
-        .attr("x", 10)
-        .attr("y", 10)
-        .attr("width", 100)
-        .attr("height", 30)
-        .attr("fill", "#f0f0f0")
-        .attr("stroke", "#ccc")
-        .attr("rx", 5)
-        .style("cursor", "pointer")
-        .on("click", resetZoom);
-
-    svg.append("text")
-        .attr("x", 20)
-        .attr("y", 30)
-        .attr("dy", "0.35em")
-        .style("font-size", "14px")
-        .style("cursor", "pointer")
-        .text("Reset Zoom")
-        .on("click", resetZoom);
-
-    // --- LEGEND (rendered in #legend) ---
-    const legendContainer = d3.select("#legend");
-    legendContainer.selectAll("*").remove();
-
-    const legendWidth = legendContainer.node().clientWidth;
-    const legendHeight = 50; // adjust as needed
-
-    const legendSVG = legendContainer.append("svg")
-        .attr("viewBox", `0 0 ${legendWidth} ${legendHeight}`)
-        .attr("preserveAspectRatio", "xMidYMid meet")
-        .style("width", "100%")
-        .style("height", "100%");
-
-    const legendGroup = legendSVG.append("g")
-        .attr("transform", `translate(10, ${legendHeight / 2 - 10})`);
-
-    // Variable to track the currently selected emotion
-    let selectedEmotion = null;
-
-    this.emotions.forEach((emotion, i) => {
-        const legendItem = legendGroup.append("g")
-            .attr("transform", `translate(${i * 100}, 0)`)
-            .style("cursor", "pointer")
-            .on("click", (event, d) => {
-                if (this.selectedEmotion === emotion) {
-                    // Reset all lines with animation
-                    d3.selectAll(".lines path")
-                        .transition()
-                        .duration(500)
-                        .style("opacity", 1);
     
-                    d3.select(event.currentTarget).select("rect")
-                        .transition()
-                        .duration(300)
-                        .attr("stroke-width", 0)
-                        .attr("transform", "scale(1)");
+        // X-axis and Y-axis
+        const xAxis = g.append("g")
+            .attr("transform", `translate(0,${height})`)
+            .call(d3.axisBottom(x)
+                .tickValues(d3.range(1, fullData.length + 1))
+                .tickFormat(d => `${d}`));
     
-                    d3.select(event.currentTarget).select("text")
-                        .transition()
-                        .duration(300)
-                        .style("font-weight", "normal");
+        g.append("g")
+            .call(d3.axisLeft(y).ticks(5).tickFormat(d3.format(".1f")))
+            .select(".domain").attr("stroke", "none");
     
-                    this.selectedEmotion = null;
-                } else {
-                    // Dim other lines with animation
-                    d3.selectAll(".lines path")
-                        .transition()
-                        .duration(500)
-                        .style("opacity", 0.1);
+        // Grid lines
+        g.append("g")
+            .attr("class", "grid")
+            .call(d3.axisLeft(y).ticks(5).tickSize(-width).tickFormat(""))
+            .style("stroke", "#ddd")
+            .style("stroke-opacity", 0.3);
     
-                    // Highlight selected line with animation
-                    d3.select(`.line-${emotion}`)
-                        .transition()
-                        .duration(500)
-                        .style("opacity", 1);
+        // --- DYNAMIC MAXIMUM ZOOM ---
+        const minPixelPerSentence = 30;
+        const maxZoom = Math.ceil((minPixelPerSentence * (fullData.length - 1)) / width);
     
-                    d3.select(event.currentTarget).select("rect")
-                        .transition()
-                        .duration(300)
-                        .attr("stroke-width", 2)
-                        .attr("transform", "scale(1.1)");
-    
-                    d3.select(event.currentTarget).select("text")
-                        .transition()
-                        .duration(300)
-                        .style("font-weight", "bold");
-    
-                    this.selectedEmotion = emotion;
-                }
-            })
-            .on("mouseover", function() {
-                d3.select(this).select("rect")
-                    .transition()
-                    .duration(200)
-                    .attr("stroke", "#000")
-                    .attr("stroke-width", 2);
-    
-                d3.select(this).select("text")
-                    .transition()
-                    .duration(200)
-                    .style("font-weight", "bold");
-            })
-            .on("mouseout", function() {
-                if (!this.selectedEmotion || this.selectedEmotion !== emotion) {
-                    d3.select(this).select("rect")
-                        .transition()
-                        .duration(200)
-                        .attr("stroke", "none")
-                        .attr("stroke-width", 0);
-    
-                    d3.select(this).select("text")
-                        .transition()
-                        .duration(200)
-                        .style("font-weight", "normal");
-                }
+        const zoom = d3.zoom()
+            .scaleExtent([1, maxZoom])
+            .translateExtent([[0, 0], [width, height]])
+            .on("zoom", (event) => {
+                const newX = event.transform.rescaleX(x);
+                const domain = newX.domain();
+                const domainStart = Math.max(1, Math.round(domain[0]));
+                const domainEnd = Math.min(fullData.length, Math.round(domain[1]));
+                const visibleWidth = newX(domainEnd) - newX(domainStart);
+                const step = Math.max(1, Math.floor((domainEnd - domainStart) / (visibleWidth / 20)));
+                const { sampledData, sampledIndices } = sampleData(fullData, domainStart, domainEnd, step);
+                drawLines(sampledData, sampledIndices, newX);
+                const tickValues = (domainEnd - domainStart) < 20 ?
+                    d3.range(domainStart, domainEnd + 1) :
+                    null;
+                xAxis.call(d3.axisBottom(newX)
+                    .tickValues(tickValues)
+                    .tickFormat(d => `${d}`));
             });
     
-        // Color square for the legend
-        legendItem.append("rect")
-            .attr("width", 18)
-            .attr("height", 18)
-            .attr("fill", this.emotionColors[emotion]);
+        svg.call(zoom);
     
-        // Label for the legend
-        legendItem.append("text")
-            .attr("x", 24)
-            .attr("y", 14)
-            .style("font-size", "12px")
-            .text(emotion);
-    });
+        // --- RESET ZOOM BUTTON ---
+        const resetZoom = () => {
+            svg.transition()
+                .duration(750)
+                .call(zoom.transform, d3.zoomIdentity);
+            const { sampledData, sampledIndices } = sampleData(fullData, 1, fullData.length, currentStep);
+            drawLines(sampledData, sampledIndices, x);
+            xAxis.call(d3.axisBottom(x)
+                .tickValues(d3.range(1, fullData.length + 1))
+                .tickFormat(d => `${d}`));
+        };
     
-}
-
+        svg.append("g")
+            .attr("class", "reset-zoom")
+            .append("rect")
+            .attr("x", 10)
+            .attr("y", 10)
+            .attr("width", 100)
+            .attr("height", 30)
+            .attr("fill", "#f0f0f0")
+            .attr("stroke", "#ccc")
+            .attr("rx", 5)
+            .style("cursor", "pointer")
+            .on("click", resetZoom);
+    
+        svg.append("text")
+            .attr("x", 20)
+            .attr("y", 30)
+            .attr("dy", "0.35em")
+            .style("font-size", "14px")
+            .style("cursor", "pointer")
+            .text("Reset Zoom")
+            .on("click", resetZoom);
+    
+        // --- LEGEND (rendered in #legend) ---
+        const legendContainer = d3.select("#legend");
+        legendContainer.selectAll("*").remove();
+    
+        const legendWidth = legendContainer.node().clientWidth;
+        const legendHeight = 50; // adjust as needed
+    
+        const legendSVG = legendContainer.append("svg")
+            .attr("viewBox", `0 0 ${legendWidth} ${legendHeight}`)
+            .attr("preserveAspectRatio", "xMidYMid meet")
+            .style("width", "100%")
+            .style("height", "100%");
+    
+        const legendGroup = legendSVG.append("g")
+            .attr("transform", `translate(10, ${legendHeight / 2 - 10})`);
+    
+        const self = this; // preserve reference to the instance
+        // Ensure selectedEmotions array is initialized
+        if (!this.selectedEmotions) {
+            this.selectedEmotions = [];
+        }
+    
+        this.emotions.forEach((emotion, i) => {
+            const legendItem = legendGroup.append("g")
+                .attr("transform", `translate(${i * 100}, 0)`)
+                .style("cursor", "pointer")
+                .on("click", function(event, d) {
+                    if (event.shiftKey) {
+                        // Shift-click: toggle the clicked emotion in the selection array
+                        if (self.selectedEmotions.includes(emotion)) {
+                            self.selectedEmotions = self.selectedEmotions.filter(e => e !== emotion);
+                            d3.select(this).select("rect")
+                                .transition().duration(300)
+                                .attr("stroke-width", 0)
+                                .attr("transform", "scale(1)");
+                            d3.select(this).select("text")
+                                .transition().duration(300)
+                                .style("font-weight", "normal");
+                        } else {
+                            self.selectedEmotions.push(emotion);
+                            d3.select(this).select("rect")
+                                .transition().duration(300)
+                                .attr("stroke-width", 2)
+                                .attr("transform", "scale(1.1)");
+                            d3.select(this).select("text")
+                                .transition().duration(300)
+                                .style("font-weight", "bold");
+                        }
+                    } else {
+                        // Normal click: if already the only selection, clear it; otherwise select just this emotion.
+                        if (self.selectedEmotions.length === 1 && self.selectedEmotions[0] === emotion) {
+                            self.selectedEmotions = [];
+                            legendGroup.selectAll("rect")
+                                .transition().duration(300)
+                                .attr("stroke-width", 0)
+                                .attr("transform", "scale(1)");
+                            legendGroup.selectAll("text")
+                                .transition().duration(300)
+                                .style("font-weight", "normal");
+                        } else {
+                            legendGroup.selectAll("rect")
+                                .transition().duration(300)
+                                .attr("stroke-width", 0)
+                                .attr("transform", "scale(1)");
+                            legendGroup.selectAll("text")
+                                .transition().duration(300)
+                                .style("font-weight", "normal");
+                            self.selectedEmotions = [emotion];
+                            d3.select(this).select("rect")
+                                .transition().duration(300)
+                                .attr("stroke-width", 2)
+                                .attr("transform", "scale(1.1)");
+                            d3.select(this).select("text")
+                                .transition().duration(300)
+                                .style("font-weight", "bold");
+                        }
+                    }
+                    // Update line opacities based on the current selection
+                    if (self.selectedEmotions.length === 0) {
+                        d3.selectAll(".lines path")
+                            .transition().duration(500)
+                            .style("opacity", 1);
+                    } else {
+                        d3.selectAll(".lines path")
+                            .transition().duration(500)
+                            .style("opacity", function() {
+                                const classes = d3.select(this).attr("class").split(" ");
+                                for (let sel of self.selectedEmotions) {
+                                    if (classes.indexOf(`line-${sel}`) !== -1) {
+                                        return 1;
+                                    }
+                                }
+                                return 0.1;
+                            });
+                    }
+                })
+                .on("mouseover", function() {
+                    d3.select(this).select("rect")
+                        .transition().duration(200)
+                        .attr("stroke", "#000")
+                        .attr("stroke-width", 2);
+                    d3.select(this).select("text")
+                        .transition().duration(200)
+                        .style("font-weight", "bold");
+                })
+                .on("mouseout", function() {
+                    if (!self.selectedEmotions.includes(emotion)) {
+                        d3.select(this).select("rect")
+                            .transition().duration(200)
+                            .attr("stroke", "none")
+                            .attr("stroke-width", 0);
+                        d3.select(this).select("text")
+                            .transition().duration(200)
+                            .style("font-weight", "normal");
+                    }
+                });
+    
+            // Append the color square and label
+            legendItem.append("rect")
+                .attr("width", 18)
+                .attr("height", 18)
+                .attr("fill", this.emotionColors[emotion]);
+    
+            legendItem.append("text")
+                .attr("x", 24)
+                .attr("y", 14)
+                .style("font-size", "12px")
+                .text(emotion);
+        });
+    }    
 }
 
 // Initialize the class and render charts after loading CSV data
