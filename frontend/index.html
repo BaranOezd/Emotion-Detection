@@ -2,10 +2,10 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Emotion Analysis</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css" />
     <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 
@@ -20,7 +20,10 @@
             <div id="sentences">
                 <!-- Container for the list of sentences -->
                 <div class="sentence-list">
-                    <!-- Sentence items will be populated here dynamically -->
+                    <!-- Instructional placeholder -->
+                    <div class="sentence-instructions">
+                        Click a sentence to view its emotion analysis.
+                    </div>
                     <textarea id="textInput" placeholder="Type or paste your text here..."></textarea>
                 </div>
 
@@ -29,15 +32,20 @@
                     <button id="uploadButton">Upload File</button>
                     <button id="analyzeButton">Analyze</button>
                 </div>
+                <!-- Feedback area -->
+                <div id="feedback" aria-live="polite"></div>
             </div>
 
             <!-- Right half: Charts -->
             <div class="charts">
                 <div id="steamGraph"></div>
-                <div id="legend"></div> 
-                <div id="chart"></div> 
-            </div>
+                <div id="chart"></div>
+              </div>
+              
+              
         </div>
+        <!-- Loading spinner (hidden by default) -->
+        <div id="loadingIndicator" class="spinner">Loading...</div>
     </div>
 
     <script src="EmotionAnalysisVisualization.js"></script>
