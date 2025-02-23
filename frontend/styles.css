@@ -1,76 +1,103 @@
-body, html {
+/* Ensure the overall page fits within the viewport */
+html, body {
     margin: 0;
     padding: 0;
     width: 100%;
     height: 100%;
+    overflow: hidden;
     box-sizing: border-box;
     font-family: Arial, sans-serif;
-}
-
-.container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2%;
-    width: 95vw;
-    height: 90vh;
-    padding: 2%;
-    box-sizing: border-box; 
-}
-
-.title {
-    padding: 5px;        /* Reduce padding */
-    margin: 0;           /* Remove extra margins */
-    height: 40px;        /* Set a fixed, smaller height */
-    display: flex;
-    align-items: center; /* Center title vertically */
-    justify-content: center;
   }
   
-  .title h1 {
-    font-size: 24px;     /* Smaller font size */
-    margin: 0;           /* Remove default margin */
-    line-height: 1.2;
+  /* Container for the entire app */
+  .container {
+    display: flex;
+    flex-direction: column;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    box-sizing: border-box;
   }
-.body {
+  
+  /* Title remains fixed at the top */
+  .title {
+    flex: 0 0 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px;
+  }
+  
+  /* Body fills the rest of the space */
+  .body {
+    flex: 1;
     display: flex;
     flex-direction: row;
     gap: 2%;
-    width: 100%;
-    height: 85%;
+    overflow: hidden;
     box-sizing: border-box;
-}
-
-#sentences {
-    flex: 1.5; 
-    height: 100%;
+  }
+  
+  /* Sentences panel (left) */
+  #sentences {
+    flex: 1.5;
     display: flex;
     flex-direction: column;
     background-color: #fff;
     border-radius: 8px;
     padding: 10px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    font-size: 1rem;
-    box-sizing: border-box; 
-    overflow: hidden; 
-}
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+  
+  .sentence-list {
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 10px;
+    box-sizing: border-box;
+  }
 
-.sentence-list {
-    flex: 1; /* Take up remaining space */
-    overflow-y: auto; /* Enable scrolling for sentences */
-    margin-bottom: 10px; /* Add space between sentences and buttons */
-    box-sizing: border-box; /* Include padding in width/height calculations */
-}
-
-.buttons {
+  .sentence-list-item {
+    padding: 8px;
+    margin: 4px 0;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+  }
+  
+  /* Hover state */
+  .sentence-list-item.hover {
+    background-color: #f0f0f0;
+  }
+  
+  /* Focus state (when using keyboard navigation) */
+  .sentence-list-item.focus {
+    outline: 2px solid #0056b3;
+  }
+  
+  /* Active/Clicked state */
+  .sentence-list-item.clicked {
+    background-color: #ffecec;
+    color: #c00;
+  }
+  
+  /* Optional: style for the sentence number */
+  .sentence-number {
+    font-weight: bold;
+    margin-right: 4px;
+  }
+  
+  /* Buttons area in sentences panel */
+  .buttons {
     display: flex;
     gap: 10px;
     justify-content: center;
-    padding: 10px 0; /* Add padding for better spacing */
-    box-sizing: border-box; /* Include padding in width/height calculations */
-}
-
-.buttons button {
+    padding: 10px 0;
+    box-sizing: border-box;
+  }
+  
+  .buttons button {
     padding: 10px 20px;
     font-size: 1rem;
     border: none;
@@ -79,98 +106,96 @@ body, html {
     background-color: #007bff;
     color: white;
     transition: background-color 0.3s ease;
-}
-
-.buttons button:hover {
+  }
+  
+  .buttons button:hover {
     background-color: #0056b3;
-}
-
-.charts {
-    flex: 2.5; /* Adjust chart container to accommodate wider sentences */
+  }
+  
+  /* Charts container: split steam graph and bar chart 50-50 */
+  .charts {
+    flex: 2.5;
     display: flex;
     flex-direction: column;
     gap: 10px;
-    height: 100%;
-    box-sizing: border-box; /* Include padding in width/height calculations */
-}
-
-#steamGraph {
-    flex: 0.4; /* Reduce steam graph height */
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+  
+  #steamGraph,
+  #chart {
+    flex: 1;  /* Each takes half of the charts container */
     background-color: #fff;
     border-radius: 8px;
     padding: 10px;
-    box-sizing: border-box; /* Include padding in width/height calculations */
-    position: relative; /* For positioning the reset zoom button */
-}
-#legend{
-    display: flex;
-    flex-direction: row;
-    gap: 10px;
-    justify-content: center;
-    padding: 10px 0; /* Add padding for better spacing */
-    box-sizing: border-box; /* Include padding in width/height calculations */
-}
-
-
-#chart {
-    flex: 0.6; /* Adjust bar chart height to fill remaining space */
-    background-color: #fff;
-    border-radius: 8px;
-    padding: 10px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    box-sizing: border-box; /* Include padding in width/height calculations */
-}
-
-#steamGraph svg,
-#chart svg {
+    box-sizing: border-box;
+  }
+  
+  /* Ensure SVGs fill their containers */
+  #steamGraph svg,
+  #chart svg {
     width: 100%;
     height: 100%;
     display: block;
-}
-
-#textInput {
+  }
+  
+  
+  /* Text input styling */
+  #textInput {
     width: 100%;
     height: 150px;
     padding: 10px;
     font-size: 1rem;
     border: 1px solid #ccc;
     border-radius: 5px;
-    resize: vertical; /* Allow vertical resizing */
+    resize: vertical;
     margin-bottom: 10px;
     box-sizing: border-box;
-}
-
-/* Reset Zoom Button Styling */
-.reset-zoom {
+  }
+  
+  /* Reset Zoom Button Styling (if applicable) */
+  .reset-zoom {
     position: absolute;
     top: 10px;
     right: 10px;
-    z-index: 10; /* Ensure it's above the graph */
-}
-
-.reset-zoom rect {
-    fill: #007bff; /* Button background color */
-    stroke: #0056b3; /* Button border color */
+    z-index: 10;
+    cursor: pointer;
+  }
+  
+  .reset-zoom rect {
+    fill: #007bff;
+    stroke: #0056b3;
     stroke-width: 1;
-    rx: 5; /* Rounded corners */
+    rx: 5;
     ry: 5;
     transition: fill 0.3s ease, stroke 0.3s ease;
-}
-
-.reset-zoom rect:hover {
-    fill: #0056b3; /* Darker background on hover */
-    stroke: #004080; /* Darker border on hover */
-}
-
-.reset-zoom text {
-    fill: white; /* Text color */
+  }
+  
+  .reset-zoom rect:hover {
+    fill: #0056b3;
+    stroke: #004080;
+  }
+  
+  .reset-zoom text {
+    fill: white;
     font-size: 14px;
     font-family: Arial, sans-serif;
     font-weight: bold;
-    pointer-events: none; /* Prevent text from blocking clicks */
-}
-
-.reset-zoom:hover text {
-    fill: #0056b3; /* Darker background on hover */
-    stroke: #004080;
-}
+    pointer-events: none;
+  }
+  
+  /* Loading spinner styling */
+  .spinner {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(255, 255, 255, 0.9);
+    padding: 20px 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    font-size: 16px;
+    display: none; 
+    z-index: 1000;
+  }
+  
