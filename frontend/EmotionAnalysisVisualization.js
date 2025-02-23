@@ -362,16 +362,98 @@ class EmotionAnalysisVisualization {
             const legendItem = legendGroup.append("g")
                 .attr("transform", `translate(${i * 100}, 0)`)
                 .style("cursor", "pointer")
-                .on("click", function(event) {
-                    // ... existing legend click logic ...
+                .on("click", function(event, d) {
+                    if (event.shiftKey) {
+                        // Shift-click: toggle the clicked emotion in the selection array
+                        if (self.selectedEmotions.includes(emotion)) {
+                            self.selectedEmotions = self.selectedEmotions.filter(e => e !== emotion);
+                            d3.select(this).select("rect")
+                                .transition().duration(300)
+                                .attr("stroke-width", 0)
+                                .attr("transform", "scale(1)");
+                            d3.select(this).select("text")
+                                .transition().duration(300)
+                                .style("font-weight", "normal");
+                        } else {
+                            self.selectedEmotions.push(emotion);
+                            d3.select(this).select("rect")
+                                .transition().duration(300)
+                                .attr("stroke-width", 2)
+                                .attr("transform", "scale(1.1)");
+                            d3.select(this).select("text")
+                                .transition().duration(300)
+                                .style("font-weight", "bold");
+                        }
+                    } else {
+                        // Normal click: if already the only selection, clear it; otherwise select just this emotion.
+                        if (self.selectedEmotions.length === 1 && self.selectedEmotions[0] === emotion) {
+                            self.selectedEmotions = [];
+                            legendGroup.selectAll("rect")
+                                .transition().duration(300)
+                                .attr("stroke-width", 0)
+                                .attr("transform", "scale(1)");
+                            legendGroup.selectAll("text")
+                                .transition().duration(300)
+                                .style("font-weight", "normal");
+                        } else {
+                            legendGroup.selectAll("rect")
+                                .transition().duration(300)
+                                .attr("stroke-width", 0)
+                                .attr("transform", "scale(1)");
+                            legendGroup.selectAll("text")
+                                .transition().duration(300)
+                                .style("font-weight", "normal");
+                            self.selectedEmotions = [emotion];
+                            d3.select(this).select("rect")
+                                .transition().duration(300)
+                                .attr("stroke-width", 2)
+                                .attr("transform", "scale(1.1)");
+                            d3.select(this).select("text")
+                                .transition().duration(300)
+                                .style("font-weight", "bold");
+                        }
+                    }
+                    // Update line opacities based on the current selection
+                    if (self.selectedEmotions.length === 0) {
+                        d3.selectAll(".lines path")
+                            .transition().duration(500)
+                            .style("opacity", 1);
+                    } else {
+                        d3.selectAll(".lines path")
+                            .transition().duration(500)
+                            .style("opacity", function() {
+                                const classes = d3.select(this).attr("class").split(" ");
+                                for (let sel of self.selectedEmotions) {
+                                    if (classes.indexOf(`line-${sel}`) !== -1) {
+                                        return 1;
+                                    }
+                                }
+                                return 0.1;
+                            });
+                    }
                 })
                 .on("mouseover", function() {
-                    // ... existing legend hover logic ...
+                    d3.select(this).select("rect")
+                        .transition().duration(200)
+                        .attr("stroke", "#000")
+                        .attr("stroke-width", 2);
+                    d3.select(this).select("text")
+                        .transition().duration(200)
+                        .style("font-weight", "bold");
                 })
                 .on("mouseout", function() {
-                    // ... existing legend out logic ...
+                    if (!self.selectedEmotions.includes(emotion)) {
+                        d3.select(this).select("rect")
+                            .transition().duration(200)
+                            .attr("stroke", "none")
+                            .attr("stroke-width", 0);
+                        d3.select(this).select("text")
+                            .transition().duration(200)
+                            .style("font-weight", "normal");
+                    }
                 });
     
+            // Append the color square and label
             legendItem.append("rect")
                 .attr("width", 18)
                 .attr("height", 18)
@@ -385,7 +467,6 @@ class EmotionAnalysisVisualization {
         });
     }    
 }
-
 // Initialize the class and render charts after loading CSV data
 d3.csv("/backend/emotion_analysis.csv").then(function (data) {
     const visualization = new EmotionAnalysisVisualization(data);
