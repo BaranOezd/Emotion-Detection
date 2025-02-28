@@ -1,54 +1,39 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Emotion Analysis</title>
-    <link rel="stylesheet" href="styles.css" />
-    <script src="https://d3js.org/d3.v7.min.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Emotion Analysis</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
-
 <body>
-    <div class="container">
-        <div class="title">
-            <h1>Emotion Analysis</h1>
-        </div>
-
-        <div class="body">
-            <!-- Left half: Sentences -->
-            <div id="sentences">
-                <!-- Container for the list of sentences -->
-                <div class="sentence-list">
-                    <!-- Instructional placeholder -->
-                    <div class="sentence-instructions">
-                        Click a sentence to view its emotion analysis.
-                    </div>
-                    <textarea id="textInput" placeholder="Type or paste your text here..."></textarea>
-                </div>
-
-                <!-- Buttons -->
-                <div class="buttons">
-                    <button id="uploadButton">Upload File</button>
-                    <button id="analyzeButton">Analyze</button>
-                </div>
-                <!-- Feedback area -->
-                <div id="feedback" aria-live="polite"></div>
-            </div>
-
-            <!-- Right half: Charts -->
-            <div class="charts">
-                <div id="steamGraph"></div>
-                <div id="chart"></div>
-              </div>
-              
-              
-        </div>
-        <!-- Loading spinner (hidden by default) -->
-        <div id="loadingIndicator" class="spinner">Loading...</div>
+  <div class="container">
+    <div class="title">
+      <h1>Emotion Analysis</h1>
     </div>
-
-    <script src="EmotionAnalysisVisualization.js"></script>
+    <div class="body">
+      <!-- Left half: Dynamic Text Editor (for input and display) -->
+      <div id="sentences">
+        <div id="textEditor" class="text-editor" contenteditable="true">
+          Type or paste your text here...
+        </div>
+      </div>
+      <!-- Right half: Charts -->
+      <div class="charts">
+        <div id="steamGraph"></div>
+        <div id="chart"></div>
+      </div>
+    </div>
+    <!-- Loading spinner (hidden by default) -->
+    <div id="loadingIndicator" class="spinner">Loading...</div>
+    <!-- Buttons and feedback -->
+    <div class="buttons">
+      <button id="uploadButton">Upload File</button>
+      <button id="analyzeButton">Analyze</button>
+    </div>
+    <div id="feedback" aria-live="polite"></div>
+  </div>
+  <script src="EmotionAnalysisVisualization.js"></script>
 </body>
-
 </html>
