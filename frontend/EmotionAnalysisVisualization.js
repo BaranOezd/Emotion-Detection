@@ -410,22 +410,14 @@ class EmotionAnalysisVisualization {
       if (!textInput) {
           alert("Please enter some text to analyze.");
           return;
-        }
-        setLoading(true);
-        analyzeText(textInput)
-          .then((data) => {
-            // Update visualization with returned data, etc.
-            updateVisualization(data.results);
-            updateSentenceList(data.results);
-          })
-          .catch((error) => {
-            console.error("Error analyzing text:", error);
-            alert("An error occurred during analysis.");
-          })
-          .finally(() => {
-            setLoading(false);
-          });
-      });
+      }
+      setLoading(true);
+      analyzeText(textInput)
+        .catch((error) => {
+          console.error("Error analyzing text:", error);
+          alert("An error occurred during analysis.");
+        });
+    });    
   
     function showFeedback(message, isError = false) {
       feedbackEl.textContent = message;
@@ -435,23 +427,7 @@ class EmotionAnalysisVisualization {
       }, 3000);
     }
   
-    analyzeButton.addEventListener("click", handleAnalyzeButton);
     uploadButton.addEventListener("click", handleFileUpload);
-  
-    function handleAnalyzeButton() {
-      const textInput = document.getElementById("textEditor").innerText.trim();
-      if (!textInput) {
-          alert("Please enter some text to analyze.");
-          return;
-      }
-  
-      setLoading(true);  // Show loading spinner
-      analyzeText(textInput)
-          .then(() => setLoading(false))  // Stop loading on success
-          .catch(() => setLoading(false)); // Stop loading on error
-  }
-  
-  
     function handleFileUpload() {
       const fileInput = document.createElement("input");
       fileInput.type = "file";
