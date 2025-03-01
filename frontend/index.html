@@ -18,6 +18,10 @@
         <div id="textEditor" class="text-editor" contenteditable="true">
           Type or paste your text here...
         </div>
+        <div class="buttons">
+          <button id="uploadButton">Upload File</button>
+          <button id="analyzeButton">Analyze</button>
+        </div>
       </div>
       <!-- Right half: Charts -->
       <div class="charts">
@@ -28,10 +32,6 @@
     <!-- Loading spinner (hidden by default) -->
     <div id="loadingIndicator" class="spinner">Loading...</div>
     <!-- Buttons and feedback -->
-    <div class="buttons">
-      <button id="uploadButton">Upload File</button>
-      <button id="analyzeButton">Analyze</button>
-    </div>
     <div id="feedback" aria-live="polite"></div>
   </div>
   <script src="EmotionAnalysisVisualization.js"></script>
