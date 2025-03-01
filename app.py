@@ -28,7 +28,6 @@ def analyze():
         if not text:
             return jsonify({"error": "No text provided"}), 400
 
-        # Analyze the text using GoEmotionsAnalyzer
         print("/analyze endpoint triggered")
         results = analyzer.analyze_dynamic_text(text)
         print("Analysis complete")
