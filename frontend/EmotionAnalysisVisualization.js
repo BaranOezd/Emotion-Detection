@@ -13,69 +13,7 @@ class EmotionAnalysisVisualization {
       };
       this.lastClickedSentence = null;
       this.selectedEmotions = [];
-    }
-  
-    // Create the sentence list with accessibility and hover effects
-    createSentenceList() {
-        const sentenceList = d3.select(".sentence-list");
-        // Remove instructional placeholder if it exists
-        sentenceList.select(".sentence-instructions").remove();
-      
-        sentenceList.selectAll(".sentence-list-item")
-          .data(this.data)
-          .enter()
-          .append("div")
-          .attr("class", "sentence-list-item")
-          .attr("tabindex", 0)
-          .attr("role", "button")
-          .attr("aria-label", (d, i) => `Sentence ${i + 1}: ${d.Sentence}`)
-          // Wrap the number and sentence text separately
-          .html((d, i) =>
-            `<span class="sentence-number" style="user-select: none;">${i + 1}. </span>
-             <span class="sentence-text">${d.Sentence}</span>`
-          )
-          .attr("title", d => `Click to view analysis for: ${d.Sentence}`)
-          // Use class toggling for interactive states
-          .on("mouseover", function () {
-            d3.select(this).classed("hover", true);
-          })
-          .on("mouseout", function () {
-            d3.select(this).classed("hover", false);
-          })
-          .on("focus", function () {
-            d3.select(this).classed("focus", true);
-          })
-          .on("blur", function () {
-            d3.select(this).classed("focus", false);
-          })
-          .on("click", (event, d) => this.onSentenceClick(event, d))
-          .on("keydown", (event, d) => {
-            if (event.key === "Enter" || event.key === " ") {
-              this.onSentenceClick(event, d);
-            }
-          });
-      }      
-  
-    onSentenceClick(event, d) {
-      if (this.lastClickedSentence === event.target) {
-        d3.select(this.lastClickedSentence)
-          .style("color", "")
-          .classed("clicked", false);
-        this.lastClickedSentence = null;
-        this.clearBarChart();
-      } else {
-        if (this.lastClickedSentence) {
-          d3.select(this.lastClickedSentence)
-            .style("color", "")
-            .classed("clicked", false);
-        }
-        d3.select(event.target)
-          .style("color", "#c00")
-          .classed("clicked", true);
-        this.lastClickedSentence = event.target;
-        this.updateBarChart(d);
-      }
-    }
+    }  
   
     clearBarChart() {
       d3.select("#chart").html("");
@@ -446,7 +384,6 @@ class EmotionAnalysisVisualization {
   // Load initial CSV data and render the visualization
   d3.csv("/backend/emotion_analysis.csv").then(function (data) {
     window.visualizationInstance = new EmotionAnalysisVisualization(data);
-    window.visualizationInstance.createSentenceList();
     window.visualizationInstance.createSteamGraph();
   });
   
@@ -469,8 +406,8 @@ class EmotionAnalysisVisualization {
       }
     }
     analyzeButton.addEventListener("click", () => {
-        const textInput = document.getElementById("textInput").value.trim();
-        if (!textInput) {
+      const textInput = document.getElementById("textEditor").innerText.trim();
+      if (!textInput) {
           alert("Please enter some text to analyze.");
           return;
         }
@@ -502,13 +439,18 @@ class EmotionAnalysisVisualization {
     uploadButton.addEventListener("click", handleFileUpload);
   
     function handleAnalyzeButton() {
-        const textInput = document.getElementById("textInput").value.trim();
-        if (!textInput) {
-            alert("Please enter some text to analyze.");
-            return;
-        }
-        analyzeText(textInput);
-    }
+      const textInput = document.getElementById("textEditor").innerText.trim();
+      if (!textInput) {
+          alert("Please enter some text to analyze.");
+          return;
+      }
+  
+      setLoading(true);  // Show loading spinner
+      analyzeText(textInput)
+          .then(() => setLoading(false))  // Stop loading on success
+          .catch(() => setLoading(false)); // Stop loading on error
+  }
+  
   
     function handleFileUpload() {
       const fileInput = document.createElement("input");
@@ -557,27 +499,51 @@ class EmotionAnalysisVisualization {
     }
   
     function analyzeText(text) {
-      fetch("/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+      return fetch("/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
       })
-        .then((response) => response.json())
-        .then((data) => {
-          if (data.error) {
-            alert("Error: " + data.error);
-          } else {
-            updateVisualization(data.results);
-            updateSentenceList(data.results);
+      .then(response => response.json()) // Make sure this returns the parsed JSON
+      .then(data => {
+          console.log("Backend response:", data);
+          if (!data || !data.results) {
+              console.error("Error: Backend response is missing 'results'", data);
+              throw new Error("No results in backend response.");
           }
-        })
-        .catch((error) => {
+          updateTextEditor(data.results);
+          updateVisualization(data.results);
+          updateSentenceList(data.results);
+          return data;
+      })
+      .catch(error => {
           console.error("Error analyzing text:", error);
-        })
-        .finally(() => {
+      })
+      .finally(() => {
           setLoading(false);
-        });
+      });
+  }
+    
+  // Function to update the text editor with analyzed sentences
+  function updateTextEditor(results) {
+    if (!results || !Array.isArray(results)) {
+        console.error("updateTextEditor received invalid results:", results);
+        return;
     }
+
+    const textEditor = document.getElementById("textEditor");
+    textEditor.innerHTML = ""; // Clear existing content
+
+    results.forEach((d, i) => {
+        const sentenceSpan = document.createElement("span");
+        sentenceSpan.textContent = d.sentence;
+        sentenceSpan.classList.add("sentence-text");
+
+        textEditor.appendChild(sentenceSpan);
+        textEditor.appendChild(document.createElement("br")); // Add line breaks
+    });
+}
+
   
     function updateVisualization(results) {
       d3.select("#chart").html("");
