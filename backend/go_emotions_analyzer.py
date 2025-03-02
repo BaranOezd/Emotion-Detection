@@ -1,4 +1,3 @@
-import csv
 import os
 import nltk
 import re
@@ -38,7 +37,6 @@ class GoEmotionsAnalyzer:
         """Analyze a single sentence for emotion scores."""
         self._load_model()
         results = self.emotion_pipeline(sentence)
-        # Assume results[0] is a list of dicts containing 'label' and 'score'
         return {result['label']: result['score'] for result in results[0]}
 
     def batch_analyze(self, sentences):
@@ -51,7 +49,7 @@ class GoEmotionsAnalyzer:
             results.append(self.analyze_emotions(sentence))
         return results
 
-    def analyze_dynamic_text(self, text, output_csv="emotion_analysis.csv"):
+    def analyze_dynamic_text(self, text):
         print("GoEmotionsAnalyzer.analyze_dynamic_text called with text:", text[:30])  # Debug log
 
         self._load_model()  # Ensure the model is loaded
@@ -65,11 +63,7 @@ class GoEmotionsAnalyzer:
         
         # Perform batch analysis
         results = self.batch_analyze(sentences)
-
-        print("Batch analysis completed, results:", results[:3])  # Print first 3 results for debugging
-
-        self.save_results_to_csv(results, sentences, output_csv)
-        print("Results saved to CSV.")
+        print("Batch analysis completed.")
 
         # Combine each sentence with its emotion scores into a single object
         combined_results = []
@@ -91,7 +85,7 @@ class GoEmotionsAnalyzer:
         text = text.replace("“", '"').replace("”", '"')
         text = text.replace("...", "…")
 
-        # Add a space after punctuation (avoiding splitting within quotes)
+        # Add space after punctuation (avoid splitting quotes/parentheses)
         text = re.sub(r'(?<=[.!?])(?=[^\s"\'])', ' ', text)
         
         # Custom abbreviations to prevent false sentence splits
@@ -130,23 +124,24 @@ class GoEmotionsAnalyzer:
 
         return final_sentences
 
-    def save_results_to_csv(self, results, sentences, output_csv):
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        output_csv_path = os.path.join(script_dir, output_csv)
-
-        try:
-            with open(output_csv_path, mode="w", newline="", encoding="utf-8") as file:
-                writer = csv.writer(file)
-                writer.writerow(["Sentence"] + [label.capitalize() for label in self.emotion_labels])
-                for sentence, emotion_scores in zip(sentences, results):
-                    row = [sentence] + [f"{emotion_scores.get(emotion, 0.0):.3f}" for emotion in self.emotion_labels]
-                    writer.writerow(row)
-            print(f"Emotion analysis results saved to {output_csv_path}")
-        except Exception as e:
-            print(f"Error saving CSV: {e}")
-
 # Instantiate a global analyzer object
 analyzer = GoEmotionsAnalyzer()
+
+@app.route('/analyze', methods=['POST'])
+def analyze():
+    try:
+        data = request.json
+        text = data.get("text", "").strip()
+        if not text:
+            return jsonify({"error": "No text provided"}), 400
+
+        print("/analyze endpoint triggered")
+        results = analyzer.analyze_dynamic_text(text)
+        print("Analysis complete")
+        return jsonify({"results": results})
+    except Exception as e:
+        print(f"Error during analysis: {e}")
+        return jsonify({"error": f"An error occurred during analysis: {str(e)}"}), 500
 
 if __name__ == "__main__":
     app.run(debug=True)
