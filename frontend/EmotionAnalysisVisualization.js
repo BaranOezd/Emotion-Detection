@@ -241,7 +241,7 @@ function updateVisualization(results) {
   window.visualizationInstance.emotions = results.length > 0 ? Object.keys(results[0].emotions) : [];
   window.visualizationInstance.updateSteamGraph();
   window.visualizationInstance.updateBarChart(results[0]);
-  updateSentenceList(results);
+  updateSentenceList(results);  
 }
 
 // Load initial data using POST and initialize the visualization instance
@@ -283,6 +283,44 @@ document.addEventListener("DOMContentLoaded", () => {
   const feedbackEl = document.getElementById("feedback");
   const loadingIndicator = document.getElementById("loadingIndicator");
 
+  window.updateSentenceList = function(results) {
+    const sentenceList = d3.select(".sentence-list");
+    sentenceList.html("");
+    results.forEach((d, i) => {
+      sentenceList.append("div")
+        .attr("class", "sentence-list-item")
+        .attr("tabindex", 0)
+        .attr("role", "button")
+        .attr("aria-label", `Sentence ${i + 1}: ${d.sentence}`)
+        .attr("title", `Click to view analysis for: ${d.sentence}`)
+        .html(
+          `<span class="sentence-number" style="user-select: none;">${i + 1}. </span>
+           <span class="sentence-text">${d.sentence}</span>`
+        )
+        // (Rest of your event listeners)
+        .on("click", function () {
+          d3.selectAll(".sentence-list-item")
+            .classed("clicked", false)
+            .style("color", "");
+          d3.select(this)
+            .classed("clicked", true)
+            .style("color", "#c00");
+          window.visualizationInstance.updateBarChart(d);
+        })
+        .on("keydown", function (event) {
+          if (event.key === "Enter" || event.key === " ") {
+            d3.selectAll(".sentence-list-item")
+              .classed("clicked", false)
+              .style("color", "");
+            d3.select(this)
+              .classed("clicked", true)
+              .style("color", "#c00");
+            window.visualizationInstance.updateBarChart(d);
+          }
+        });
+    });
+  };
+  
   // Restore saved text on load
   const savedText = localStorage.getItem("savedText");
   if (savedText) {
