@@ -87,7 +87,7 @@ class EmotionAnalysisVisualization {
       .text(d => (d.score > 0 ? `${Math.round(d.score * 100)}%` : ""));
   }
 
-  // New method: Update (or re-create) the steam graph with integrated legend.
+  // Update (or re-create) the steam graph with integrated legend.
   updateSteamGraph() {
     const container = d3.select("#steamGraph");
     container.html("");
@@ -129,6 +129,7 @@ class EmotionAnalysisVisualization {
 
       svg.append("path")
         .datum(this.data)
+        .attr("class", `line-${emotion} lines`)
         .attr("fill", "none")
         .attr("stroke", this.emotionColors[emotion] || "#000")
         .attr("stroke-width", 4)
@@ -146,7 +147,7 @@ class EmotionAnalysisVisualization {
         .attr("transform", `translate(${(i - this.emotions.length / 2) * legendSpacing}, 0)`)
         .style("cursor", "pointer")
         .on("click", (event) => {
-          // Toggle selection logic (same as before)
+          // Toggle selection logic
           if (event.shiftKey) {
             if (this.selectedEmotions.includes(emotion)) {
               this.selectedEmotions = this.selectedEmotions.filter(e => e !== emotion);
@@ -168,6 +169,7 @@ class EmotionAnalysisVisualization {
                 .style("font-weight", "bold");
             }
           } else {
+            // Single selection logic
             if (this.selectedEmotions.length === 1 && this.selectedEmotions[0] === emotion) {
               this.selectedEmotions = [];
               legendGroup.selectAll("rect")
@@ -226,14 +228,21 @@ class EmotionAnalysisVisualization {
         .style("font-size", "12px")
         .text(emotion);
     });
-
-    // (Optional) You can add zoom and reset zoom functionality here if needed.
   }
 }
 
 // -------------------
 // Global Helper Functions
 // -------------------
+
+// Consolidated visualization update function
+function updateVisualization(results) {
+  window.visualizationInstance.data = results;
+  window.visualizationInstance.emotions = results.length > 0 ? Object.keys(results[0].emotions) : [];
+  window.visualizationInstance.updateSteamGraph();
+  window.visualizationInstance.updateBarChart(results[0]);
+  updateSentenceList(results);
+}
 
 // Load initial data using POST and initialize the visualization instance
 function loadInitialData() {
@@ -255,10 +264,7 @@ function loadInitialData() {
     }
     const results = data.results;
     window.visualizationInstance = new EmotionAnalysisVisualization(results);
-    // Use the instance’s methods for both bar chart and steam graph
-    window.visualizationInstance.updateSteamGraph();
-    // Optionally, update the bar chart using the first sentence:
-    window.visualizationInstance.updateBarChart(results[0]);
+    updateVisualization(results);
   })
   .catch(error => {
     console.error("Error loading JSON from /analyze:", error);
@@ -289,15 +295,9 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   function setLoading(isLoading) {
-    if (isLoading) {
-      loadingIndicator.style.display = "block";
-      analyzeButton.disabled = true;
-      uploadButton.disabled = true;
-    } else {
-      loadingIndicator.style.display = "none";
-      analyzeButton.disabled = false;
-      uploadButton.disabled = false;
-    }
+    loadingIndicator.style.display = isLoading ? "block" : "none";
+    analyzeButton.disabled = isLoading;
+    uploadButton.disabled = isLoading;
   }
 
   analyzeButton.addEventListener("click", () => {
@@ -308,16 +308,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     setLoading(true);
     analyzeText(textInput)
-      .then((data) => {
-        // Update the visualization instance with new data
-        window.visualizationInstance.data = data.results;
-        window.visualizationInstance.emotions = data.results.length > 0 ? Object.keys(data.results[0].emotions) : [];
-        window.visualizationInstance.updateSteamGraph();
-        // Update bar chart for the first sentence, for example
-        window.visualizationInstance.updateBarChart(data.results[0]);
-        updateSentenceList(data.results);
+      .then(data => {
+        updateVisualization(data.results);
       })
-      .catch((error) => {
+      .catch(error => {
         console.error("Error analyzing text:", error);
         alert("An error occurred during analysis.");
       })
@@ -325,14 +319,6 @@ document.addEventListener("DOMContentLoaded", () => {
         setLoading(false);
       });
   });
-
-  function showFeedback(message, isError = false) {
-    feedbackEl.textContent = message;
-    feedbackEl.style.color = isError ? "#c00" : "#007b00";
-    setTimeout(() => {
-      feedbackEl.textContent = "";
-    }, 3000);
-  }
 
   uploadButton.addEventListener("click", handleFileUpload);
   function handleFileUpload() {
@@ -354,28 +340,23 @@ document.addEventListener("DOMContentLoaded", () => {
         method: "POST",
         body: formData,
       })
-        .then((response) => {
+        .then(response => {
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
           }
           return response.json();
         })
-        .then((data) => {
+        .then(data => {
           if (data.error) {
             showFeedback(`Error: ${data.error}`, true);
           } else if (data.results) {
             showFeedback("File uploaded and processed successfully!");
-            // Update the visualization instance with new data
-            window.visualizationInstance.data = data.results;
-            window.visualizationInstance.emotions = data.results.length > 0 ? Object.keys(data.results[0].emotions) : [];
-            window.visualizationInstance.updateSteamGraph();
-            window.visualizationInstance.updateBarChart(data.results[0]);
-            updateSentenceList(data.results);
+            updateVisualization(data.results);
           } else {
             showFeedback("Unexpected response from backend.", true);
           }
         })
-        .catch((error) => {
+        .catch(error => {
           console.error("Error during file upload:", error);
           showFeedback("An error occurred during file upload.", true);
         })
@@ -433,14 +414,13 @@ document.addEventListener("DOMContentLoaded", () => {
         .on("blur", function () {
           d3.select(this).classed("focus", false);
         })
-        .on("click", function (event) {
+        .on("click", function () {
           d3.selectAll(".sentence-list-item")
             .classed("clicked", false)
             .style("color", "");
           d3.select(this)
             .classed("clicked", true)
             .style("color", "#c00");
-          // Update the bar chart for the selected sentence
           window.visualizationInstance.updateBarChart(d);
         })
         .on("keydown", function (event) {
@@ -455,5 +435,13 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         });
     });
-  }   
+  }
+
+  function showFeedback(message, isError = false) {
+    feedbackEl.textContent = message;
+    feedbackEl.style.color = isError ? "#c00" : "#007b00";
+    setTimeout(() => {
+      feedbackEl.textContent = "";
+    }, 3000);
+  }
 });
