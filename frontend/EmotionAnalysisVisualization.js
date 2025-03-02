@@ -387,12 +387,23 @@ class EmotionAnalysisVisualization {
     window.visualizationInstance.createSteamGraph();
   });
   
-  // DOMContentLoaded for dynamic interactions
   document.addEventListener("DOMContentLoaded", () => {
+    const textEditor = document.getElementById("textEditor");
     const analyzeButton = document.getElementById("analyzeButton");
     const uploadButton = document.getElementById("uploadButton");
     const feedbackEl = document.getElementById("feedback");
     const loadingIndicator = document.getElementById("loadingIndicator");
+  
+    // Restore saved text on load
+    const savedText = localStorage.getItem("savedText");
+    if (savedText) {
+      textEditor.innerHTML = savedText;
+    }
+  
+    // Save text changes to localStorage as the user types
+    textEditor.addEventListener("input", () => {
+      localStorage.setItem("savedText", textEditor.innerText);
+    });
   
     function setLoading(isLoading) {
       if (isLoading) {
@@ -405,20 +416,29 @@ class EmotionAnalysisVisualization {
         uploadButton.disabled = false;
       }
     }
+  
     analyzeButton.addEventListener("click", () => {
-      const textInput = document.getElementById("textEditor").innerText.trim();
+      const textInput = textEditor.innerText.trim();
       if (!textInput) {
-          alert("Please enter some text to analyze.");
-          return;
+        alert("Please enter some text to analyze.");
+        return;
       }
       setLoading(true);
       analyzeText(textInput)
+        .then((data) => {
+          // Update visualization with returned data, etc.
+          updateVisualization(data.results);
+          updateSentenceList(data.results);
+        })
         .catch((error) => {
           console.error("Error analyzing text:", error);
           alert("An error occurred during analysis.");
+        })
+        .finally(() => {
+          setLoading(false);
         });
-    });    
-  
+    });  
+
     function showFeedback(message, isError = false) {
       feedbackEl.textContent = message;
       feedbackEl.style.color = isError ? "#c00" : "#007b00";
@@ -503,23 +523,14 @@ class EmotionAnalysisVisualization {
   // Function to update the text editor with analyzed sentences
   function updateTextEditor(results) {
     if (!results || !Array.isArray(results)) {
-        console.error("updateTextEditor received invalid results:", results);
-        return;
-    }
-
+      console.error("updateTextEditor received invalid results:", results);
+      return;
+    }    
     const textEditor = document.getElementById("textEditor");
-    textEditor.innerHTML = ""; // Clear existing content
-
-    results.forEach((d, i) => {
-        const sentenceSpan = document.createElement("span");
-        sentenceSpan.textContent = d.sentence;
-        sentenceSpan.classList.add("sentence-text");
-
-        textEditor.appendChild(sentenceSpan);
-        textEditor.appendChild(document.createElement("br")); // Add line breaks
-    });
-}
-
+    const combinedText = results.map(d => d.sentence).join(" ");
+    textEditor.textContent = combinedText;
+  }
+  
   
     function updateVisualization(results) {
       d3.select("#chart").html("");
