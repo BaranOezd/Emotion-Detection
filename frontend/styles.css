@@ -51,6 +51,16 @@ html, body {
   overflow: hidden;
 }
 
+.highlighted-sentence {
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.highlighted-sentence.selected {
+  background-color: #fffa72; 
+}
+
+
 /* Full-text editor styling */
 .text-editor {
   flex: 1;

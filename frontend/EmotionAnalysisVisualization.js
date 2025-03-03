@@ -25,11 +25,11 @@ class EmotionAnalysisVisualization {
   updateBarChart(sentenceData) {
     const chartDiv = d3.select("#chart");
     chartDiv.html("");
-
+  
     const margin = { top: 20, right: 30, bottom: 100, left: 50 };
     const width = chartDiv.node().clientWidth - margin.left - margin.right;
     const height = chartDiv.node().clientHeight - margin.top - margin.bottom;
-
+  
     const svg = chartDiv.append("svg")
       .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
       .attr("preserveAspectRatio", "xMidYMid meet")
@@ -37,18 +37,20 @@ class EmotionAnalysisVisualization {
       .style("height", "100%")
       .append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
-
+  
+    // x scale uses the emotions keys
     const x = d3.scaleBand()
       .domain(this.emotions)
       .range([0, width])
       .padding(0.2);
-
+  
     const y = d3.scaleLinear()
       .domain([0, 1])
       .nice()
       .range([height, 0])
       .clamp(true);
-
+  
+    // x-axis
     svg.append("g")
       .attr("transform", `translate(0,${height})`)
       .call(d3.axisBottom(x))
@@ -56,18 +58,21 @@ class EmotionAnalysisVisualization {
       .style("text-anchor", "middle")
       .style("font-size", "12px")
       .attr("dy", "1.5em");
-
+  
+    // y-axis
     svg.append("g")
       .call(d3.axisLeft(y)
         .ticks(5)
         .tickValues([0, 0.2, 0.4, 0.6, 0.8, 1])
         .tickFormat(d => `${d * 100}%`));
-
+  
+    // Use the nested emotion scores from the backend data
     const emotionScores = this.emotions.map(emotion => ({
       emotion: emotion,
-      score: +sentenceData[emotion] || 0
+      score: +sentenceData.emotions[emotion] || 0
     }));
-
+  
+    // Create bars
     svg.selectAll(".bar")
       .data(emotionScores)
       .enter().append("rect")
@@ -76,7 +81,8 @@ class EmotionAnalysisVisualization {
       .attr("width", x.bandwidth())
       .attr("height", d => Math.max(height - y(d.score), 0))
       .style("fill", d => this.emotionColors[d.emotion]);
-
+  
+    // Add labels on top of the bars
     svg.selectAll(".label")
       .data(emotionScores)
       .enter().append("text")
@@ -86,7 +92,7 @@ class EmotionAnalysisVisualization {
       .style("font-size", "12px")
       .text(d => (d.score > 0 ? `${Math.round(d.score * 100)}%` : ""));
   }
-
+  
   // Update (or re-create) the steam graph with integrated legend.
   updateSteamGraph() {
     const container = d3.select("#steamGraph");
@@ -347,7 +353,13 @@ document.addEventListener("DOMContentLoaded", () => {
     setLoading(true);
     analyzeText(textInput)
       .then(data => {
-        updateVisualization(data.results);
+        if (data.results) {
+          updateVisualization(data.results);  // Uses data.results from the backend
+          // Optionally update the text editor with highlighted sentences based on backend data
+          updateTextEditorWithHighlights(data.results);
+        } else {
+          alert("No results returned from analysis.");
+        }
       })
       .catch(error => {
         console.error("Error analyzing text:", error);
@@ -357,6 +369,7 @@ document.addEventListener("DOMContentLoaded", () => {
         setLoading(false);
       });
   });
+  
 
   uploadButton.addEventListener("click", handleFileUpload);
   function handleFileUpload() {
@@ -425,55 +438,45 @@ document.addEventListener("DOMContentLoaded", () => {
       throw error;
     });
   }
+
+  function updateTextEditorWithHighlights(results) {
+    const textEditor = document.getElementById("textEditor");
+    // Build the content by wrapping each sentence in a span
+    const updatedContent = results.map((item, index) => {
+      // Optionally decide on an inline style based on the emotion scores
+      let highlightStyle = "";
+      const primaryEmotion = Object.keys(item.emotions).reduce((a, b) =>
+        item.emotions[a] > item.emotions[b] ? a : b
+      );
+      if (primaryEmotion === "joy" && item.emotions[primaryEmotion] > 0.7) {
+        highlightStyle = "background-color: #fff9c4;"; // Soft yellow
+      } else if (primaryEmotion === "sadness" && item.emotions[primaryEmotion] > 0.7) {
+        highlightStyle = "background-color: #bbdefb;"; // Soft blue
+      }
+      return `<span class="highlighted-sentence" data-index="${index}" style="${highlightStyle}">
+                ${item.sentence}
+              </span>`;
+    }).join(" ");
   
-  function updateSentenceList(results) {
-    const sentenceList = d3.select(".sentence-list");
-    sentenceList.html("");
-    results.forEach((d, i) => {
-      sentenceList.append("div")
-        .attr("class", "sentence-list-item")
-        .attr("tabindex", 0)
-        .attr("role", "button")
-        .attr("aria-label", `Sentence ${i + 1}: ${d.sentence}`)
-        .attr("title", `Click to view analysis for: ${d.sentence}`)
-        .html(
-          `<span class="sentence-number" style="user-select: none;">${i + 1}. </span>
-           <span class="sentence-text">${d.sentence}</span>`
-        )
-        .on("mouseover", function () {
-          d3.select(this).classed("hover", true);
-        })
-        .on("mouseout", function () {
-          d3.select(this).classed("hover", false);
-        })
-        .on("focus", function () {
-          d3.select(this).classed("focus", true);
-        })
-        .on("blur", function () {
-          d3.select(this).classed("focus", false);
-        })
-        .on("click", function () {
-          d3.selectAll(".sentence-list-item")
-            .classed("clicked", false)
-            .style("color", "");
-          d3.select(this)
-            .classed("clicked", true)
-            .style("color", "#c00");
-          window.visualizationInstance.updateBarChart(d);
-        })
-        .on("keydown", function (event) {
-          if (event.key === "Enter" || event.key === " ") {
-            d3.selectAll(".sentence-list-item")
-              .classed("clicked", false)
-              .style("color", "");
-            d3.select(this)
-              .classed("clicked", true)
-              .style("color", "#c00");
-            window.visualizationInstance.updateBarChart(d);
-          }
-        });
+    // Update the text editor's HTML
+    textEditor.innerHTML = updatedContent;
+  
+    // Now add the event listener to each sentence span
+    textEditor.querySelectorAll(".highlighted-sentence").forEach(span => {
+      span.addEventListener("click", () => {
+        // Remove "selected" class from all spans first
+        textEditor.querySelectorAll(".highlighted-sentence").forEach(s => s.classList.remove("selected"));
+        // Add the "selected" class to the clicked span
+        span.classList.add("selected");
+  
+        const index = span.getAttribute("data-index");
+        // Update the bar chart using the emotion data from the clicked sentence
+        window.visualizationInstance.updateBarChart(results[index]);
+      });
     });
   }
+  
+  
 
   function showFeedback(message, isError = false) {
     feedbackEl.textContent = message;
