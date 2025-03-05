@@ -440,23 +440,13 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function updateTextEditorWithHighlights(results) {
-    const textEditor = document.getElementById("textEditor");
-    // Build the content by wrapping each sentence in a span
-    const updatedContent = results.map((item, index) => {
-      // Optionally decide on an inline style based on the emotion scores
-      let highlightStyle = "";
-      const primaryEmotion = Object.keys(item.emotions).reduce((a, b) =>
-        item.emotions[a] > item.emotions[b] ? a : b
-      );
-      if (primaryEmotion === "joy" && item.emotions[primaryEmotion] > 0.7) {
-        highlightStyle = "background-color: #fff9c4;"; // Soft yellow
-      } else if (primaryEmotion === "sadness" && item.emotions[primaryEmotion] > 0.7) {
-        highlightStyle = "background-color: #bbdefb;"; // Soft blue
-      }
-      return `<span class="highlighted-sentence" data-index="${index}" style="${highlightStyle}">
-                ${item.sentence}
-              </span>`;
-    }).join(" ");
+    const textEditor = document.getElementById("textEditor");   
+      // Build the content by wrapping each sentence in a span
+      const updatedContent = results.map((item, index) => {
+        return `<span class="highlighted-sentence" data-index="${index}">
+                  ${item.sentence}
+                </span>`;
+      }).join(" ");    
   
     // Update the text editor's HTML
     textEditor.innerHTML = updatedContent;
