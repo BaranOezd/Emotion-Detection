@@ -38,7 +38,7 @@ class EmotionAnalysisVisualization {
       .append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
   
-    // x scale uses the emotions keys
+    // x and y scales
     const x = d3.scaleBand()
       .domain(this.emotions)
       .range([0, width])
@@ -47,8 +47,7 @@ class EmotionAnalysisVisualization {
     const y = d3.scaleLinear()
       .domain([0, 1])
       .nice()
-      .range([height, 0])
-      .clamp(true);
+      .range([height, 0]);
   
     // x-axis
     svg.append("g")
@@ -64,35 +63,102 @@ class EmotionAnalysisVisualization {
       .call(d3.axisLeft(y)
         .ticks(5)
         .tickValues([0, 0.2, 0.4, 0.6, 0.8, 1])
-        .tickFormat(d => `${d * 100}%`));
+        .tickFormat(d => `${Math.round(d * 100)}%`));
   
-    // Use the nested emotion scores from the backend data
-    const emotionScores = this.emotions.map(emotion => ({
-      emotion: emotion,
-      score: +sentenceData.emotions[emotion] || 0
-    }));
+    // Normalize emotion scores so that their sum equals 1
+    let total = this.emotions.reduce((sum, emotion) => sum + (+sentenceData.emotions[emotion] || 0), 0);
+    const emotionScores = this.emotions.map(emotion => {
+      let raw = +sentenceData.emotions[emotion] || 0;
+      let normalized = total > 0 ? raw / total : 0;
+      return { emotion, score: normalized };
+    });
   
-    // Create bars
+    // Define a dynamic minimum: for instance, representing 2% of the scale.
+    const minFraction = 0.03;
+    const dynamicMinHeight = height - y(minFraction); // this is the minimum bar height in pixels
+  
+    // Define drag behavior with proportional adjustments and dynamic minimum
+    const drag = d3.drag()
+      .on("start", function(event, d) {
+        d3.select(this).style("opacity", 0.7);
+      })
+      .on("drag", function(event, d) {
+        let newY = event.y;
+        newY = Math.max(0, Math.min(newY, height));
+        let newScore = y.invert(newY);
+        // Snap to 5% increments
+        newScore = Math.round(newScore * 20) / 20;
+        newScore = Math.max(0, Math.min(newScore, 1));
+  
+        // Calculate remaining percentage for the other emotions
+        const otherTotal = emotionScores.filter(e => e.emotion !== d.emotion)
+                                        .reduce((acc, cur) => acc + cur.score, 0);
+        const remaining = 1 - newScore;
+        d.score = newScore;
+        sentenceData.emotions[d.emotion] = newScore;
+  
+        // Adjust other emotions proportionally
+        emotionScores.forEach(e => {
+          if (e.emotion !== d.emotion) {
+            if (otherTotal > 0) {
+              e.score = e.score / otherTotal * remaining;
+            } else {
+              e.score = remaining / (emotionScores.length - 1);
+            }
+          }
+        });
+  
+        // Update bars and labels using dynamic minimum height
+        svg.selectAll(".bar")
+          .data(emotionScores)
+          .attr("y", d => {
+            const computedHeight = height - y(d.score);
+            return computedHeight < dynamicMinHeight ? height - dynamicMinHeight : y(d.score);
+          })
+          .attr("height", d => Math.max(height - y(d.score), dynamicMinHeight));
+  
+        svg.selectAll(".label")
+          .data(emotionScores)
+          .attr("y", d => {
+            const computedHeight = height - y(d.score);
+            return (computedHeight < dynamicMinHeight ? height - dynamicMinHeight : y(d.score)) - 5;
+          })
+          .text(d => `${Math.round(d.score * 100)}%`);
+      })
+      .on("end", function(event, d) {
+        d3.select(this).style("opacity", 1);
+      });
+  
+    // Draw bars with dynamic minimum height applied
     svg.selectAll(".bar")
       .data(emotionScores)
       .enter().append("rect")
+      .attr("class", "bar")
       .attr("x", d => x(d.emotion))
-      .attr("y", d => y(d.score))
+      .attr("y", d => {
+        const computedHeight = height - y(d.score);
+        return computedHeight < dynamicMinHeight ? height - dynamicMinHeight : y(d.score);
+      })
       .attr("width", x.bandwidth())
-      .attr("height", d => Math.max(height - y(d.score), 0))
-      .style("fill", d => this.emotionColors[d.emotion]);
+      .attr("height", d => Math.max(height - y(d.score), dynamicMinHeight))
+      .style("fill", d => this.emotionColors[d.emotion])
+      .call(drag);
   
-    // Add labels on top of the bars
+    // Draw labels above bars
     svg.selectAll(".label")
       .data(emotionScores)
       .enter().append("text")
+      .attr("class", "label")
       .attr("x", d => x(d.emotion) + x.bandwidth() / 2)
-      .attr("y", d => y(d.score) - 5)
+      .attr("y", d => {
+        const computedHeight = height - y(d.score);
+        return (computedHeight < dynamicMinHeight ? height - dynamicMinHeight : y(d.score)) - 5;
+      })
       .attr("text-anchor", "middle")
       .style("font-size", "12px")
-      .text(d => (d.score > 0 ? `${Math.round(d.score * 100)}%` : ""));
+      .text(d => `${Math.round(d.score * 100)}%`);
   }
-  
+
   // Update (or re-create) the steam graph with integrated legend.
   updateSteamGraph() {
     const container = d3.select("#steamGraph");
