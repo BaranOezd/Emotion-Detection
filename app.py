@@ -1,4 +1,5 @@
 import os
+import traceback
 from flask import Flask, render_template, send_from_directory, request, jsonify
 from backend.go_emotions_analyzer import GoEmotionsAnalyzer
 from backend.emotion_sentence_generator import SentenceGenerator
@@ -36,6 +37,7 @@ def analyze():
         return jsonify({"results": results})
     except Exception as e:
         print(f"Error during analysis: {e}")
+        print(traceback.format_exc())
         return jsonify({"error": f"An error occurred during analysis: {str(e)}"}), 500
 
 # Endpoint to modify a selected sentence based on new emotion levels.
@@ -43,6 +45,7 @@ def analyze():
 def modify_sentence():
     try:
         data = request.json
+        print("Received data for modification:", data)
         original_sentence = data.get("sentence", "").strip()
         new_emotion_levels = data.get("new_emotions")
         context_text = data.get("context", "")
@@ -55,6 +58,7 @@ def modify_sentence():
         return jsonify(result)
     except Exception as e:
         print(f"Error during sentence modification: {e}")
+        print(traceback.format_exc())
         return jsonify({"error": f"An error occurred during sentence modification: {str(e)}"}), 500
 
 # Endpoint to handle file uploads for analysis.
@@ -80,6 +84,7 @@ def upload():
         return jsonify({"results": results})
     except Exception as e:
         print(f"Error during upload: {e}")
+        print(traceback.format_exc())
         return jsonify({"error": f"An error occurred during file upload: {str(e)}"}), 500
 
 # Optional: Serve backend files (for debugging or additional resources).
