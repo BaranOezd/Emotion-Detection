@@ -9,7 +9,6 @@ class GoEmotionsAnalyzer:
         self.model = None
         self.emotion_pipeline = None
         self.emotion_labels = None
-        # Load spaCy's English model for robust sentence segmentation.
         self.spacy_nlp = spacy.load("en_core_web_sm")
 
     def _load_model(self):
