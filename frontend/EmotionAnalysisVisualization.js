@@ -25,8 +25,8 @@ class EmotionAnalysisVisualization {
   updateBarChart(sentenceData) {
     const chartDiv = d3.select("#chart");
     chartDiv.html("");
-
-    // Create (or reuse) a tooltip element
+  
+    // Create (or reuse) tooltip element
     let tooltip = d3.select("body").select(".tooltip");
     if (tooltip.empty()) {
       tooltip = d3.select("body").append("div")
@@ -39,96 +39,87 @@ class EmotionAnalysisVisualization {
         .style("pointer-events", "none")
         .style("opacity", 0);
     }
-
+  
+    // Save a copy of the original emotions for resetting later
     const originalEmotions = Object.assign({}, sentenceData.emotions);
-
-// Ensure the original sentence is saved in the sentenceData object
-if (!sentenceData.originalSentence) {
-  sentenceData.originalSentence = sentenceData.sentence;
-}
-
-chartDiv.append("button")
-  .attr("id", "resetButton")
-  .text("Reset")
-  .style("margin-bottom", "10px")
-  .on("click", () => {
-    // Revert emotions and sentence to their original values
-    sentenceData.emotions = Object.assign({}, originalEmotions);
-    sentenceData.sentence = sentenceData.originalSentence;
-    this.updateBarChart(sentenceData);
-    
-    // Update the corresponding sentence span in the text editor
-    if (sentenceData.index !== undefined) {
-      const sentenceSpan = document.querySelector(`.highlighted-sentence[data-index="${sentenceData.index}"]`);
-      if (sentenceSpan) {
-        sentenceSpan.innerText = sentenceData.originalSentence;
-      }
-    } else {
-      // Fallback: update the entire text editor by re-rendering all highlights.
-      window.updateTextEditorWithHighlights(window.visualizationInstance.data);
+  
+    // Ensure the original sentence is stored
+    if (!sentenceData.originalSentence) {
+      sentenceData.originalSentence = sentenceData.sentence;
     }
-  });
-
-    // Add a change sentence button above the chart
+  
+    // Reset button
+    chartDiv.append("button")
+      .attr("id", "resetButton")
+      .text("Reset")
+      .style("margin-bottom", "10px")
+      .on("click", () => {
+        // Revert to original emotions and sentence
+        sentenceData.emotions = Object.assign({}, originalEmotions);
+        sentenceData.sentence = sentenceData.originalSentence;
+        this.updateBarChart(sentenceData);
+        
+        // Update the corresponding sentence span in the text editor and keep it highlighted
+        if (sentenceData.index !== undefined) {
+          const sentenceSpan = document.querySelector(`.highlighted-sentence[data-index="${sentenceData.index}"]`);
+          if (sentenceSpan) {
+            sentenceSpan.innerText = sentenceData.originalSentence;
+            sentenceSpan.classList.add("selected");
+          } else {
+            // Re-render text editor with the selected index preserved
+            window.updateTextEditorWithHighlights(window.visualizationInstance.data, sentenceData.index);
+          }
+        }
+      });
+  
+    // Change Sentence button
     chartDiv.append("button")
       .attr("id", "changeSentenceButton")
       .text("Change Sentence")
       .style("margin-left", "10px")
       .style("margin-bottom", "10px")
       .on("click", () => {
-        // Build the payload with the current sentence and updated emotion values.
+        // Build payload with current sentence and updated emotion values
         const payload = {
           sentence: sentenceData.sentence,
           new_emotions: sentenceData.emotions,
           context: document.getElementById("textEditor")
-            ? document.getElementById("textEditor").innerText
-            : ""
+                    ? document.getElementById("textEditor").innerText
+                    : ""
         };
         fetch("/modify", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         })
-          .then(async response => {
-            if (!response.ok) {
-              const errorText = await response.text();
-              throw new Error(`Network response was not ok: ${response.statusText} - ${errorText}`);
-            }
-            return response.json();
-          })
-          .then(data => {
-            if (data.error) {
-              throw new Error(data.error);
-            }
-            const modifiedSentence = data.new_sentence;
-
-            // Try to update a specific sentence span if it exists.
-            if (sentenceData.index !== undefined) {
-              const sentenceSpan = document.querySelector(`.highlighted-sentence[data-index="${sentenceData.index}"]`);
-              if (sentenceSpan) {
-                sentenceSpan.innerText = modifiedSentence;
-              }
-            }
-
-            // Fallback: update the text editor content by replacing the old sentence.
-            const textEditor = document.getElementById("textEditor");
-            if (textEditor) {
-              textEditor.innerHTML = textEditor.innerHTML.replace(sentenceData.sentence, modifiedSentence);
-            }
-
-            // Update the sentenceData object so that subsequent actions use the new sentence.
-            sentenceData.sentence = modifiedSentence;
-          })
-          .catch(error => {
-            console.error("Error modifying sentence:", error);
-            alert("An error occurred while modifying the sentence: " + error.message);
-          });
+        .then(async response => {
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Network response was not ok: ${response.statusText} - ${errorText}`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          if (data.error) {
+            throw new Error(data.error);
+          }
+          const modifiedSentence = data.new_sentence;
+          // Update sentenceData with the new sentence
+          sentenceData.sentence = modifiedSentence;
+    
+          // Re-render the text editor with the current sentence highlighted
+          window.updateTextEditorWithHighlights(window.visualizationInstance.data, sentenceData.index);
+        })
+        .catch(error => {
+          console.error("Error modifying sentence:", error);
+          alert("An error occurred while modifying the sentence: " + error.message);
+        });
       });
-
+  
     const margin = { top: 40, right: 30, bottom: 100, left: 50 };
     const width = chartDiv.node().clientWidth - margin.left - margin.right;
     const height = chartDiv.node().clientHeight - margin.top - margin.bottom;
-
+  
     const svg = chartDiv.append("svg")
       .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
       .attr("preserveAspectRatio", "xMidYMid meet")
@@ -136,19 +127,19 @@ chartDiv.append("button")
       .style("height", "100%")
       .append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
-
+  
     // Define x and y scales
     const x = d3.scaleBand()
       .domain(this.emotions)
       .range([0, width])
       .padding(0.2);
-
+  
     const y = d3.scaleLinear()
       .domain([0, 1])
       .nice()
       .range([height, 0]);
-
-    // Append x-axis without extra labels
+  
+    // Append x-axis
     const xAxis = svg.append("g")
       .attr("transform", `translate(0,${height})`)
       .call(d3.axisBottom(x));
@@ -156,14 +147,14 @@ chartDiv.append("button")
       .style("text-anchor", "middle")
       .style("font-size", "12px")
       .attr("dy", "1.5em");
-
-    // Append y-axis without extra labels
+  
+    // Append y-axis
     svg.append("g")
       .call(d3.axisLeft(y)
         .ticks(5)
         .tickValues([0, 0.2, 0.4, 0.6, 0.8, 1])
         .tickFormat(d => `${Math.round(d * 100)}%`));
-
+  
     // Normalize emotion scores so that their sum equals 1
     let total = this.emotions.reduce((sum, emotion) => sum + (+sentenceData.emotions[emotion] || 0), 0);
     const emotionScores = this.emotions.map(emotion => {
@@ -171,43 +162,34 @@ chartDiv.append("button")
       let normalized = total > 0 ? raw / total : 0;
       return { emotion, score: normalized };
     });
-
-    // Define a dynamic minimum: representing 3% of the scale.
+  
+    // Define a dynamic minimum: 3% of the scale
     const minFraction = 0.03;
-    const dynamicMinHeight = height - y(minFraction); // minimum bar height in pixels
-
-    // Define drag behavior with proportional adjustments and dynamic minimum
+    const dynamicMinHeight = height - y(minFraction);
+  
+    // Define drag behavior with proportional adjustments
     const drag = d3.drag()
-      .on("start", function (event, d) {
+      .on("start", function(event, d) {
         d3.select(this).style("opacity", 0.7);
       })
-      .on("drag", function (event, d) {
-        let newY = event.y;
-        newY = Math.max(0, Math.min(newY, height));
+      .on("drag", function(event, d) {
+        let newY = Math.max(0, Math.min(event.y, height));
         let newScore = y.invert(newY);
-        // Snap to 5% increments
         newScore = Math.round(newScore * 20) / 20;
         newScore = Math.max(0, Math.min(newScore, 1));
-
-        // Calculate remaining percentage for the other emotions
+  
         const otherTotal = emotionScores.filter(e => e.emotion !== d.emotion)
-          .reduce((acc, cur) => acc + cur.score, 0);
+                                        .reduce((acc, cur) => acc + cur.score, 0);
         const remaining = 1 - newScore;
         d.score = newScore;
         sentenceData.emotions[d.emotion] = newScore;
-
-        // Adjust other emotions proportionally
+  
         emotionScores.forEach(e => {
           if (e.emotion !== d.emotion) {
-            if (otherTotal > 0) {
-              e.score = e.score / otherTotal * remaining;
-            } else {
-              e.score = remaining / (emotionScores.length - 1);
-            }
+            e.score = otherTotal > 0 ? e.score / otherTotal * remaining : remaining / (emotionScores.length - 1);
           }
         });
-
-        // Update bars and labels immediately using dynamic minimum height
+  
         svg.selectAll(".bar")
           .data(emotionScores)
           .attr("y", d => {
@@ -215,7 +197,7 @@ chartDiv.append("button")
             return computedHeight < dynamicMinHeight ? height - dynamicMinHeight : y(d.score);
           })
           .attr("height", d => Math.max(height - y(d.score), dynamicMinHeight));
-
+  
         svg.selectAll(".label")
           .data(emotionScores)
           .attr("y", d => {
@@ -223,18 +205,17 @@ chartDiv.append("button")
             return (computedHeight < dynamicMinHeight ? height - dynamicMinHeight : y(d.score)) - 5;
           })
           .text(d => `${Math.round(d.score * 100)}%`);
-
-        // Update tooltip during drag
+  
         tooltip.html(`${d.emotion}: ${Math.round(d.score * 100)}%`)
           .style("left", (event.pageX + 10) + "px")
           .style("top", (event.pageY - 20) + "px");
       })
-      .on("end", function (event, d) {
+      .on("end", function(event, d) {
         d3.select(this).style("opacity", 1);
         tooltip.style("opacity", 0);
       });
-
-    // Draw bars with dynamic minimum height applied, add tooltip events and pointer styles
+  
+    // Draw bars with tooltip and drag events
     svg.selectAll(".bar")
       .data(emotionScores)
       .enter().append("rect")
@@ -250,24 +231,24 @@ chartDiv.append("button")
       .style("cursor", "pointer")
       .attr("tabindex", 0)
       .attr("aria-label", d => `${d.emotion}: ${Math.round(d.score * 100)}%`)
-      .on("mouseover", function (event, d) {
+      .on("mouseover", function(event, d) {
         tooltip.style("opacity", 0.9);
         tooltip.html(`${d.emotion}: ${Math.round(d.score * 100)}%`)
           .style("left", (event.pageX + 10) + "px")
           .style("top", (event.pageY - 20) + "px");
         d3.select(this).style("stroke", "#000").style("stroke-width", "1px");
       })
-      .on("mousemove", function (event, d) {
+      .on("mousemove", function(event, d) {
         tooltip.style("left", (event.pageX + 10) + "px")
-          .style("top", (event.pageY - 20) + "px");
+               .style("top", (event.pageY - 20) + "px");
       })
-      .on("mouseout", function (event, d) {
+      .on("mouseout", function(event, d) {
         tooltip.style("opacity", 0);
         d3.select(this).style("stroke", "none");
       })
       .call(drag);
-
-    // Draw labels above bars immediately
+  
+    // Draw labels above bars
     svg.selectAll(".label")
       .data(emotionScores)
       .enter().append("text")
@@ -281,6 +262,7 @@ chartDiv.append("button")
       .style("font-size", "12px")
       .text(d => `${Math.round(d.score * 100)}%`);
   }
+  
   // Update (or re-create) the steam graph with integrated legend.
   updateSteamGraph() {
     const container = d3.select("#steamGraph");
@@ -635,28 +617,28 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
-  window.updateTextEditorWithHighlights = function(results) {
-    const textEditor = document.getElementById("textEditor");
-    // Build the content by wrapping each sentence in a span
-    const updatedContent = results.map((item, index) => {
-      return `<span class="highlighted-sentence" data-index="${index}">
-                ${item.sentence}
-              </span>`;
-    }).join(" ");
-    
-    // Update the text editor's HTML
-    textEditor.innerHTML = updatedContent;
-    
-    // Add event listeners to each sentence span
-    textEditor.querySelectorAll(".highlighted-sentence").forEach(span => {
-      span.addEventListener("click", () => {
-        textEditor.querySelectorAll(".highlighted-sentence").forEach(s => s.classList.remove("selected"));
-        span.classList.add("selected");
-        const index = span.getAttribute("data-index");
-        window.visualizationInstance.updateBarChart(results[index]);
-      });
+  // Modified updateTextEditorWithHighlights to accept an optional selectedIndex parameter
+window.updateTextEditorWithHighlights = function(results, selectedIndex = null) {
+  const textEditor = document.getElementById("textEditor");
+  const updatedContent = results.map((item, index) => {
+    const selectedClass = (selectedIndex !== null && +selectedIndex === index) ? " selected" : "";
+    return `<span class="highlighted-sentence${selectedClass}" data-index="${index}">
+              ${item.sentence}
+            </span>`;
+  }).join(" ");
+  textEditor.innerHTML = updatedContent;
+  
+  // Attach event listeners to each sentence span
+  textEditor.querySelectorAll(".highlighted-sentence").forEach(span => {
+    span.addEventListener("click", () => {
+      textEditor.querySelectorAll(".highlighted-sentence").forEach(s => s.classList.remove("selected"));
+      span.classList.add("selected");
+      const index = span.getAttribute("data-index");
+      window.visualizationInstance.updateBarChart(results[index]);
     });
-  };
+  });
+};
+
   
 
   function showFeedback(message, isError = false) {
