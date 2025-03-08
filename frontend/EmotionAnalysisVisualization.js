@@ -262,7 +262,7 @@ class EmotionAnalysisVisualization {
       .style("font-size", "12px")
       .text(d => `${Math.round(d.score * 100)}%`);
   }
-  
+
   // Update (or re-create) the steam graph with integrated legend.
   updateSteamGraph() {
     const container = d3.select("#steamGraph");
@@ -413,9 +413,8 @@ class EmotionAnalysisVisualization {
 
 // Consolidated visualization update function
 function updateVisualization(results) {
-
-  results.forEach(result => {
-    // Only set it if it hasn't been set yet.
+  results.forEach((result, index) => {
+    result.index = index; // Assign the index for later reference
     if (!result.originalSentence) {
       result.originalSentence = result.sentence;
     }
