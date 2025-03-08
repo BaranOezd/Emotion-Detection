@@ -30,15 +30,18 @@ class SentenceGenerator:
         :param new_emotion_levels: A dictionary of emotion levels (anger, disgust, fear, joy,
                                    neutral, sadness, surprise) that add up to 1.000.
         :param context_text: (Optional) Additional context to help maintain overall narrative.
-        :return: A dictionary containing the generated sentence and usage details.
+        :return: The generated sentence as a plain string.
         """
+        # Modify the prompt to instruct JSON output
         prompt = (
             f"Below is the original sentence:\n\"{original_sentence}\"\n\n"
             f"The new desired emotion levels are:\n{new_emotion_levels}\n\n"
             "Please generate a new sentence that retains the original context and is similar in length, "
-            "but reflects these modified emotions. Adjust the tone accordingly without changing the meaning."
+            "but reflects these modified emotions. Adjust the tone accordingly without changing the meaning. "
+            "Return your output strictly as a JSON object with one key 'sentence'. For example, the output should be:\n"
+            "{\"sentence\": \"Your generated sentence here\"}\n"
+            "Do not include any additional text or explanation."
         )
-        
         if context_text:
             prompt += f"\n\nAdditional context:\n{context_text}"
         
@@ -53,36 +56,17 @@ class SentenceGenerator:
             max_tokens=self.max_tokens
         )
         
-        # Convert the response to a dictionary using the available method.
+        # Convert the response to a dictionary
         response_dict = response.to_dict()
         
-        # Debug: print the full response for inspection.
-        print("OpenAI API response:", json.dumps(response_dict, indent=2))
-        
         try:
-            new_sentence = response_dict['choices'][0]['message']['content'].strip()
+            response_text = response_dict['choices'][0]['message']['content'].strip()
+            # Attempt to parse the response as JSON
+            parsed_output = json.loads(response_text)
+            new_sentence = parsed_output["sentence"]
         except Exception as e:
-            print("Error extracting new sentence from response:", e)
+            print("Error parsing JSON output from response:", e)
             raise
-
-        usage = response_dict.get('usage', {})
-        input_tokens = usage.get('prompt_tokens', 0)
-        output_tokens = usage.get('completion_tokens', 0)
-        total_tokens = usage.get('total_tokens', 0)
         
-        # Example pricing values
-        price_per_1M_input_tokens = 0.15  # $0.15 per 1M input tokens
-        price_per_1M_output_tokens = 0.60  # $0.60 per 1M output tokens
-        
-        money_spent = (input_tokens / 1_000_000) * price_per_1M_input_tokens + \
-                      (output_tokens / 1_000_000) * price_per_1M_output_tokens
-        
-        return {
-            "new_sentence": new_sentence,
-            "usage": {
-                "input_tokens": input_tokens,
-                "output_tokens": output_tokens,
-                "total_tokens": total_tokens,
-                "money_spent": money_spent
-            }
-        }
+        # Return just the generated sentence
+        return new_sentence

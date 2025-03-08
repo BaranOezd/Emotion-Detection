@@ -49,13 +49,15 @@ def modify_sentence():
         original_sentence = data.get("sentence", "").strip()
         new_emotion_levels = data.get("new_emotions")
         context_text = data.get("context", "")
+        
         if not original_sentence or not new_emotion_levels:
             return jsonify({"error": "Sentence and new_emotions must be provided"}), 400
-        
+
         print("/modify endpoint triggered")
-        result = sentence_generator.generate_modified_sentence(original_sentence, new_emotion_levels, context_text)
-        print("Sentence modification complete")
-        return jsonify(result)
+        # The generator returns a plain string. Wrap it in a JSON object.
+        new_sentence = sentence_generator.generate_modified_sentence(original_sentence, new_emotion_levels, context_text)
+        print("Sentence modification complete:", new_sentence)
+        return jsonify({"new_sentence": new_sentence})
     except Exception as e:
         print(f"Error during sentence modification: {e}")
         print(traceback.format_exc())
