@@ -15,7 +15,7 @@ class EmotionAnalysisVisualization {
     };
     this.lastClickedSentence = null;
     this.selectedEmotions = [];
-  }  
+  }
 
   clearBarChart() {
     d3.select("#chart").html("");
@@ -40,77 +40,90 @@ class EmotionAnalysisVisualization {
         .style("opacity", 0);
     }
 
-    // Save a copy of the original emotions for resetting later
     const originalEmotions = Object.assign({}, sentenceData.emotions);
 
-    // Add a reset button above the chart
-    chartDiv.append("button")
-      .attr("id", "resetButton")
-      .text("Reset")
-      .style("margin-bottom", "10px")
-      .on("click", () => {
-        sentenceData.emotions = Object.assign({}, originalEmotions);
-        this.updateBarChart(sentenceData);
-      });
+// Ensure the original sentence is saved in the sentenceData object
+if (!sentenceData.originalSentence) {
+  sentenceData.originalSentence = sentenceData.sentence;
+}
 
-    // Add a change sentence button above the chart
 chartDiv.append("button")
-.attr("id", "changeSentenceButton")
-.text("Change Sentence")
-.style("margin-left", "10px")
-.style("margin-bottom", "10px")
-.on("click", () => {
-  // Build the payload with the current sentence and updated emotion values.
-  const payload = {
-    sentence: sentenceData.sentence,
-    new_emotions: sentenceData.emotions,
-    context: document.getElementById("textEditor")
-              ? document.getElementById("textEditor").innerText
-              : ""
-  };
-  fetch("/modify", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  })
-  .then(async response => {
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Network response was not ok: ${response.statusText} - ${errorText}`);
-    }
-    return response.json();
-  })
-  .then(data => {
-    if (data.error) {
-      throw new Error(data.error);
-    }
-    const modifiedSentence = data.new_sentence;
-  
-    // If we have a valid index for the sentence, update only that specific span.
+  .attr("id", "resetButton")
+  .text("Reset")
+  .style("margin-bottom", "10px")
+  .on("click", () => {
+    // Revert emotions and sentence to their original values
+    sentenceData.emotions = Object.assign({}, originalEmotions);
+    sentenceData.sentence = sentenceData.originalSentence;
+    this.updateBarChart(sentenceData);
+    
+    // Update the corresponding sentence span in the text editor
     if (sentenceData.index !== undefined) {
       const sentenceSpan = document.querySelector(`.highlighted-sentence[data-index="${sentenceData.index}"]`);
       if (sentenceSpan) {
-        sentenceSpan.textContent = modifiedSentence;
-      } else {
-        console.warn("Could not find the sentence span with data-index", sentenceData.index);
+        sentenceSpan.innerText = sentenceData.originalSentence;
       }
     } else {
-      // Fallback: if we don't have an index, update the whole text editor.
-      const textEditor = document.getElementById("textEditor");
-      if (textEditor) {
-        textEditor.innerHTML = textEditor.innerHTML.replace(sentenceData.sentence, modifiedSentence);
-        // (Re-attach event listeners here if necessary.)
-      }
+      // Fallback: update the entire text editor by re-rendering all highlights.
+      window.updateTextEditorWithHighlights(window.visualizationInstance.data);
     }
-  
-    // Update the sentenceData object so that subsequent actions use the new sentence.
-    sentenceData.sentence = modifiedSentence;
-  })
-  .catch(error => {
-    console.error("Error modifying sentence:", error);
-    alert("An error occurred while modifying the sentence: " + error.message);
-  });  
-});
+  });
+
+    // Add a change sentence button above the chart
+    chartDiv.append("button")
+      .attr("id", "changeSentenceButton")
+      .text("Change Sentence")
+      .style("margin-left", "10px")
+      .style("margin-bottom", "10px")
+      .on("click", () => {
+        // Build the payload with the current sentence and updated emotion values.
+        const payload = {
+          sentence: sentenceData.sentence,
+          new_emotions: sentenceData.emotions,
+          context: document.getElementById("textEditor")
+            ? document.getElementById("textEditor").innerText
+            : ""
+        };
+        fetch("/modify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        })
+          .then(async response => {
+            if (!response.ok) {
+              const errorText = await response.text();
+              throw new Error(`Network response was not ok: ${response.statusText} - ${errorText}`);
+            }
+            return response.json();
+          })
+          .then(data => {
+            if (data.error) {
+              throw new Error(data.error);
+            }
+            const modifiedSentence = data.new_sentence;
+
+            // Try to update a specific sentence span if it exists.
+            if (sentenceData.index !== undefined) {
+              const sentenceSpan = document.querySelector(`.highlighted-sentence[data-index="${sentenceData.index}"]`);
+              if (sentenceSpan) {
+                sentenceSpan.innerText = modifiedSentence;
+              }
+            }
+
+            // Fallback: update the text editor content by replacing the old sentence.
+            const textEditor = document.getElementById("textEditor");
+            if (textEditor) {
+              textEditor.innerHTML = textEditor.innerHTML.replace(sentenceData.sentence, modifiedSentence);
+            }
+
+            // Update the sentenceData object so that subsequent actions use the new sentence.
+            sentenceData.sentence = modifiedSentence;
+          })
+          .catch(error => {
+            console.error("Error modifying sentence:", error);
+            alert("An error occurred while modifying the sentence: " + error.message);
+          });
+      });
 
     const margin = { top: 40, right: 30, bottom: 100, left: 50 };
     const width = chartDiv.node().clientWidth - margin.left - margin.right;
@@ -165,10 +178,10 @@ chartDiv.append("button")
 
     // Define drag behavior with proportional adjustments and dynamic minimum
     const drag = d3.drag()
-      .on("start", function(event, d) {
+      .on("start", function (event, d) {
         d3.select(this).style("opacity", 0.7);
       })
-      .on("drag", function(event, d) {
+      .on("drag", function (event, d) {
         let newY = event.y;
         newY = Math.max(0, Math.min(newY, height));
         let newScore = y.invert(newY);
@@ -178,7 +191,7 @@ chartDiv.append("button")
 
         // Calculate remaining percentage for the other emotions
         const otherTotal = emotionScores.filter(e => e.emotion !== d.emotion)
-                                        .reduce((acc, cur) => acc + cur.score, 0);
+          .reduce((acc, cur) => acc + cur.score, 0);
         const remaining = 1 - newScore;
         d.score = newScore;
         sentenceData.emotions[d.emotion] = newScore;
@@ -216,7 +229,7 @@ chartDiv.append("button")
           .style("left", (event.pageX + 10) + "px")
           .style("top", (event.pageY - 20) + "px");
       })
-      .on("end", function(event, d) {
+      .on("end", function (event, d) {
         d3.select(this).style("opacity", 1);
         tooltip.style("opacity", 0);
       });
@@ -237,18 +250,18 @@ chartDiv.append("button")
       .style("cursor", "pointer")
       .attr("tabindex", 0)
       .attr("aria-label", d => `${d.emotion}: ${Math.round(d.score * 100)}%`)
-      .on("mouseover", function(event, d) {
+      .on("mouseover", function (event, d) {
         tooltip.style("opacity", 0.9);
         tooltip.html(`${d.emotion}: ${Math.round(d.score * 100)}%`)
           .style("left", (event.pageX + 10) + "px")
           .style("top", (event.pageY - 20) + "px");
         d3.select(this).style("stroke", "#000").style("stroke-width", "1px");
       })
-      .on("mousemove", function(event, d) {
+      .on("mousemove", function (event, d) {
         tooltip.style("left", (event.pageX + 10) + "px")
-               .style("top", (event.pageY - 20) + "px");
+          .style("top", (event.pageY - 20) + "px");
       })
-      .on("mouseout", function(event, d) {
+      .on("mouseout", function (event, d) {
         tooltip.style("opacity", 0);
         d3.select(this).style("stroke", "none");
       })
@@ -386,7 +399,7 @@ chartDiv.append("button")
           } else {
             d3.selectAll(".lines path")
               .transition().duration(500)
-              .style("opacity", function() {
+              .style("opacity", function () {
                 const classes = d3.select(this).attr("class").split(" ");
                 for (let sel of this.selectedEmotions) {
                   if (classes.indexOf(`line-${sel}`) !== -1) {
@@ -418,11 +431,19 @@ chartDiv.append("button")
 
 // Consolidated visualization update function
 function updateVisualization(results) {
+
+  results.forEach(result => {
+    // Only set it if it hasn't been set yet.
+    if (!result.originalSentence) {
+      result.originalSentence = result.sentence;
+    }
+  });
+
   window.visualizationInstance.data = results;
   window.visualizationInstance.emotions = results.length > 0 ? Object.keys(results[0].emotions) : [];
   window.visualizationInstance.updateSteamGraph();
   window.visualizationInstance.updateBarChart(results[0]);
-  updateSentenceList(results);  
+  updateSentenceList(results);
 }
 
 // Load initial data using POST and initialize the visualization instance
@@ -433,23 +454,23 @@ function loadInitialData() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ text: sampleText })
   })
-  .then(response => {
-    if (!response.ok) {
-      throw new Error("Network response was not ok: " + response.statusText);
-    }
-    return response.json();
-  })
-  .then(data => {
-    if (!data.results) {
-      throw new Error("Expected JSON object to contain a 'results' key");
-    }
-    const results = data.results;
-    window.visualizationInstance = new EmotionAnalysisVisualization(results);
-    updateVisualization(results);
-  })
-  .catch(error => {
-    console.error("Error loading JSON from /analyze:", error);
-  });
+    .then(response => {
+      if (!response.ok) {
+        throw new Error("Network response was not ok: " + response.statusText);
+      }
+      return response.json();
+    })
+    .then(data => {
+      if (!data.results) {
+        throw new Error("Expected JSON object to contain a 'results' key");
+      }
+      const results = data.results;
+      window.visualizationInstance = new EmotionAnalysisVisualization(results);
+      updateVisualization(results);
+    })
+    .catch(error => {
+      console.error("Error loading JSON from /analyze:", error);
+    });
 }
 loadInitialData();
 
@@ -464,7 +485,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const feedbackEl = document.getElementById("feedback");
   const loadingIndicator = document.getElementById("loadingIndicator");
 
-  window.updateSentenceList = function(results) {
+  window.updateSentenceList = function (results) {
     const sentenceList = d3.select(".sentence-list");
     sentenceList.html("");
     results.forEach((d, i) => {
@@ -501,7 +522,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
   };
-  
+
   // Restore saved text on load
   const savedText = localStorage.getItem("savedText");
   if (savedText) {
@@ -529,7 +550,7 @@ document.addEventListener("DOMContentLoaded", () => {
     analyzeText(textInput)
       .then(data => {
         if (data.results) {
-          updateVisualization(data.results);  // Uses data.results from the backend
+          updateVisualization(data.results);  
           // Optionally update the text editor with highlighted sentences based on backend data
           updateTextEditorWithHighlights(data.results);
         } else {
@@ -544,7 +565,7 @@ document.addEventListener("DOMContentLoaded", () => {
         setLoading(false);
       });
   });
-  
+
 
   uploadButton.addEventListener("click", handleFileUpload);
   function handleFileUpload() {
@@ -598,49 +619,44 @@ document.addEventListener("DOMContentLoaded", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: text })
     })
-    .then(response => {
-      if (!response.ok) {
-        throw new Error("Network response was not ok: " + response.statusText);
-      }
-      return response.json();
-    })
-    .then(data => {
-      console.log("Backend response:", data);
-      return data;
-    })
-    .catch(error => {
-      console.error("Error analyzing text:", error);
-      throw error;
-    });
+      .then(response => {
+        if (!response.ok) {
+          throw new Error("Network response was not ok: " + response.statusText);
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log("Backend response:", data);
+        return data;
+      })
+      .catch(error => {
+        console.error("Error analyzing text:", error);
+        throw error;
+      });
   }
 
-  function updateTextEditorWithHighlights(results) {
-    const textEditor = document.getElementById("textEditor");   
-      // Build the content by wrapping each sentence in a span
-      const updatedContent = results.map((item, index) => {
-        return `<span class="highlighted-sentence" data-index="${index}">
-                  ${item.sentence}
-                </span>`;
-      }).join(" ");    
-  
+  window.updateTextEditorWithHighlights = function(results) {
+    const textEditor = document.getElementById("textEditor");
+    // Build the content by wrapping each sentence in a span
+    const updatedContent = results.map((item, index) => {
+      return `<span class="highlighted-sentence" data-index="${index}">
+                ${item.sentence}
+              </span>`;
+    }).join(" ");
+    
     // Update the text editor's HTML
     textEditor.innerHTML = updatedContent;
-  
-    // Now add the event listener to each sentence span
+    
+    // Add event listeners to each sentence span
     textEditor.querySelectorAll(".highlighted-sentence").forEach(span => {
       span.addEventListener("click", () => {
-        // Remove "selected" class from all spans first
         textEditor.querySelectorAll(".highlighted-sentence").forEach(s => s.classList.remove("selected"));
-        // Add the "selected" class to the clicked span
         span.classList.add("selected");
-  
         const index = span.getAttribute("data-index");
-        // Update the bar chart using the emotion data from the clicked sentence
         window.visualizationInstance.updateBarChart(results[index]);
       });
     });
-  }
-  
+  };
   
 
   function showFeedback(message, isError = false) {
