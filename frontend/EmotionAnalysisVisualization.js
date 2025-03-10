@@ -18,13 +18,13 @@ class EmotionAnalysisVisualization {
   }
 
   clearBarChart() {
-    d3.select("#chart").html("");
+    d3.select("#barchart").html("");
   }
 
   // Update the bar chart for a selected sentence's emotion data
   updateBarChart(sentenceData) {
-    const chartDiv = d3.select("#chart");
-    chartDiv.html("");
+    const barChartDiv = d3.select("#barchart");
+    barChartDiv.html("");
   
     // Create (or reuse) tooltip element
     let tooltip = d3.select("body").select(".tooltip");
@@ -49,7 +49,7 @@ class EmotionAnalysisVisualization {
     }
   
     // Reset button
-    chartDiv.append("button")
+    barChartDiv.append("button")
       .attr("id", "resetButton")
       .text("Reset")
       .style("margin-bottom", "10px")
@@ -73,7 +73,7 @@ class EmotionAnalysisVisualization {
       });
   
     // Change Sentence button
-    chartDiv.append("button")
+    barChartDiv.append("button")
       .attr("id", "changeSentenceButton")
       .text("Change Sentence")
       .style("margin-left", "10px")
@@ -117,10 +117,10 @@ class EmotionAnalysisVisualization {
       });
   
     const margin = { top: 40, right: 30, bottom: 100, left: 50 };
-    const width = chartDiv.node().clientWidth - margin.left - margin.right;
-    const height = chartDiv.node().clientHeight - margin.top - margin.bottom;
+    const width = barChartDiv.node().clientWidth - margin.left - margin.right;
+    const height = barChartDiv.node().clientHeight - margin.top - margin.bottom;
   
-    const svg = chartDiv.append("svg")
+    const svg = barChartDiv.append("svg")
       .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
       .attr("preserveAspectRatio", "xMidYMid meet")
       .style("width", "100%")
@@ -264,8 +264,8 @@ class EmotionAnalysisVisualization {
   }
 
   // Update (or re-create) the steam graph with integrated legend.
-  updateSteamGraph() {
-    const container = d3.select("#steamGraph");
+    updateLineChart() {
+    const container = d3.select("#linechart");
     container.html("");
 
     const margin = { top: 20, right: 30, bottom: 100, left: 40 };
@@ -422,7 +422,7 @@ function updateVisualization(results) {
 
   window.visualizationInstance.data = results;
   window.visualizationInstance.emotions = results.length > 0 ? Object.keys(results[0].emotions) : [];
-  window.visualizationInstance.updateSteamGraph();
+  window.visualizationInstance.updateLineChart();
   window.visualizationInstance.updateBarChart(results[0]);
   updateSentenceList(results);
 }
@@ -636,9 +636,7 @@ window.updateTextEditorWithHighlights = function(results, selectedIndex = null) 
       window.visualizationInstance.updateBarChart(results[index]);
     });
   });
-};
-
-  
+}; 
 
   function showFeedback(message, isError = false) {
     feedbackEl.textContent = message;
