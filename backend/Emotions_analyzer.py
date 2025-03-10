@@ -2,7 +2,7 @@ import spacy
 from flask import Flask, request, jsonify
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
 
-class GoEmotionsAnalyzer:
+class EmotionsAnalyzer:
     def __init__(self, model_name="j-hartmann/emotion-english-distilroberta-base"):
         self.model_name = model_name
         self.tokenizer = None

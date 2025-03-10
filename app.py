@@ -1,14 +1,14 @@
 import os
 import traceback
 from flask import Flask, render_template, send_from_directory, request, jsonify
-from backend.go_emotions_analyzer import GoEmotionsAnalyzer
+from backend.Emotions_analyzer import EmotionsAnalyzer
 from backend.emotion_sentence_generator import SentenceGenerator
 
 # Initialize Flask app with frontend templates and static files.
 app = Flask(__name__, template_folder='./frontend', static_folder='./frontend')
 
 # Instantiate the analyzer and sentence generator.
-analyzer = GoEmotionsAnalyzer()
+analyzer = EmotionsAnalyzer()
 sentence_generator = SentenceGenerator()
 
 # Route for the main HTML page.
