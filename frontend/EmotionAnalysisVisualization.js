@@ -54,7 +54,7 @@ class EmotionAnalysisVisualization {
       .text("Reset")
       .style("margin-bottom", "10px")
       .on("click", () => {
-        
+
         // Revert to original emotions and sentence
         sentenceData.emotions = Object.assign({}, originalEmotions);
         sentenceData.sentence = sentenceData.originalSentence;
@@ -434,7 +434,6 @@ function updateVisualization(results) {
   window.visualizationInstance.data = results;
   window.visualizationInstance.emotions = results.length > 0 ? Object.keys(results[0].emotions) : [];
   window.visualizationInstance.updateLineChart();
-  window.visualizationInstance.updateBarChart(results[0]);
   updateSentenceList(results);
 }
 
