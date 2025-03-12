@@ -54,11 +54,18 @@ class EmotionAnalysisVisualization {
       .text("Reset")
       .style("margin-bottom", "10px")
       .on("click", () => {
+        
         // Revert to original emotions and sentence
         sentenceData.emotions = Object.assign({}, originalEmotions);
         sentenceData.sentence = sentenceData.originalSentence;
+
+        //Revert line graph to original emotions 
+        window.visualizationInstance.data[sentenceData.index] = sentenceData;
+        window.visualizationInstance.updateLineChart();   
+
+        //Revert bar chart to original emotions
         this.updateBarChart(sentenceData);
-        
+
         // Update the corresponding sentence span in the text editor and keep it highlighted
         if (sentenceData.index !== undefined) {
           const sentenceSpan = document.querySelector(`.highlighted-sentence[data-index="${sentenceData.index}"]`);
@@ -106,9 +113,13 @@ class EmotionAnalysisVisualization {
           const modifiedSentence = data.new_sentence;
           // Update sentenceData with the new sentence
           sentenceData.sentence = modifiedSentence;
+
+          window.visualizationInstance.data[sentenceData.index] = sentenceData;
     
           // Re-render the text editor with the current sentence highlighted
           window.updateTextEditorWithHighlights(window.visualizationInstance.data, sentenceData.index);
+          window.visualizationInstance.updateLineChart();
+
         })
         .catch(error => {
           console.error("Error modifying sentence:", error);
