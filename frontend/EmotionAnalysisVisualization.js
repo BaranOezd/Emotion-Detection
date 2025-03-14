@@ -1,4 +1,5 @@
 import BarChartModule from "./modules/BarChart.js";
+import LineChartModule from "./modules/LineChart.js";
 
 class EmotionAnalysisVisualization {
   constructor(data) {
@@ -18,149 +19,12 @@ class EmotionAnalysisVisualization {
     this.lastClickedSentence = null;
     this.selectedEmotions = [];
     this.barChartModule = new BarChartModule("#barchart", this.emotionColors, this.emotions);
+    this.lineChartModule = new LineChartModule("#linechart", this.emotions, this.emotionColors);
 
   }
-  // Update (or re-create) the steam graph with integrated legend.
-    updateLineChart() {
-    const container = d3.select("#linechart");
-    container.html("");
 
-    const margin = { top: 20, right: 30, bottom: 100, left: 40 };
-    const width = container.node().clientWidth - margin.left - margin.right;
-    const height = container.node().clientHeight - margin.top - margin.bottom;
-
-    const svg = container.append("svg")
-      .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
-      .attr("preserveAspectRatio", "xMidYMid meet")
-      .style("width", "100%")
-      .style("height", "100%")
-      .append("g")
-      .attr("transform", `translate(${margin.left},${margin.top})`);
-
-    const x = d3.scaleLinear()
-      .domain([1, this.data.length])
-      .range([0, width]);
-
-    const y = d3.scaleLinear()
-      .domain([0, 1])
-      .nice()
-      .range([height, 0]);
-
-    svg.append("g")
-      .attr("transform", `translate(0,${height})`)
-      .call(d3.axisBottom(x).ticks(this.data.length).tickFormat(d => `${d}`));
-
-    svg.append("g")
-      .call(d3.axisLeft(y).ticks(5).tickFormat(d3.format(".1f")));
-
-    // Draw a line for each emotion using this.emotionColors
-    this.emotions.forEach(emotion => {
-      const line = d3.line()
-        .x((d, i) => x(i + 1))
-        .y(d => y(+d.emotions[emotion] || 0))
-        .curve(d3.curveBasis);
-
-      svg.append("path")
-        .datum(this.data)
-        .attr("class", `line-${emotion} lines`)
-        .attr("fill", "none")
-        .attr("stroke", this.emotionColors[emotion] || "#000")
-        .attr("stroke-width", 4)
-        .attr("d", line);
-    });
-
-    // Integrated legend below the graph
-    const legendGroup = svg.append("g")
-      .attr("class", "legend")
-      .attr("transform", `translate(${width / 2}, ${height + 30})`);
-
-    const legendSpacing = 100;
-    this.emotions.forEach((emotion, i) => {
-      const legendItem = legendGroup.append("g")
-        .attr("transform", `translate(${(i - this.emotions.length / 2) * legendSpacing}, 0)`)
-        .style("cursor", "pointer")
-        .on("click", (event) => {
-          // Toggle selection logic
-          if (event.shiftKey) {
-            if (this.selectedEmotions.includes(emotion)) {
-              this.selectedEmotions = this.selectedEmotions.filter(e => e !== emotion);
-              d3.select(event.currentTarget).select("rect")
-                .transition().duration(300)
-                .attr("stroke-width", 0)
-                .attr("transform", "scale(1)");
-              d3.select(event.currentTarget).select("text")
-                .transition().duration(300)
-                .style("font-weight", "normal");
-            } else {
-              this.selectedEmotions.push(emotion);
-              d3.select(event.currentTarget).select("rect")
-                .transition().duration(300)
-                .attr("stroke-width", 2)
-                .attr("transform", "scale(1.1)");
-              d3.select(event.currentTarget).select("text")
-                .transition().duration(300)
-                .style("font-weight", "bold");
-            }
-          } else {
-            // Single selection logic
-            if (this.selectedEmotions.length === 1 && this.selectedEmotions[0] === emotion) {
-              this.selectedEmotions = [];
-              legendGroup.selectAll("rect")
-                .transition().duration(300)
-                .attr("stroke-width", 0)
-                .attr("transform", "scale(1)");
-              legendGroup.selectAll("text")
-                .transition().duration(300)
-                .style("font-weight", "normal");
-            } else {
-              legendGroup.selectAll("rect")
-                .transition().duration(300)
-                .attr("stroke-width", 0)
-                .attr("transform", "scale(1)");
-              legendGroup.selectAll("text")
-                .transition().duration(300)
-                .style("font-weight", "normal");
-              this.selectedEmotions = [emotion];
-              d3.select(event.currentTarget).select("rect")
-                .transition().duration(300)
-                .attr("stroke-width", 2)
-                .attr("transform", "scale(1.1)");
-              d3.select(event.currentTarget).select("text")
-                .transition().duration(300)
-                .style("font-weight", "bold");
-            }
-          }
-          // Update line opacities based on selectedEmotions
-          if (this.selectedEmotions.length === 0) {
-            d3.selectAll(".lines path")
-              .transition().duration(500)
-              .style("opacity", 1);
-          } else {
-            d3.selectAll(".lines path")
-              .transition().duration(500)
-              .style("opacity", function () {
-                const classes = d3.select(this).attr("class").split(" ");
-                for (let sel of this.selectedEmotions) {
-                  if (classes.indexOf(`line-${sel}`) !== -1) {
-                    return 1;
-                  }
-                }
-                return 0.1;
-              }.bind(this));
-          }
-        });
-
-      legendItem.append("rect")
-        .attr("width", 18)
-        .attr("height", 18)
-        .attr("fill", this.emotionColors[emotion]);
-
-      legendItem.append("text")
-        .attr("x", 24)
-        .attr("y", 14)
-        .style("font-size", "12px")
-        .text(emotion);
-    });
+  updateLineChart() {
+    this.lineChartModule.render(this.data);
   }
 }
 
