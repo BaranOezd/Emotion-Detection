@@ -184,23 +184,31 @@ class EmotionAnalysisVisualization {
         d3.select(this).style("opacity", 0.7);
       })
       .on("drag", function(event, d) {
+        // Get the new score from the drag event.
         let newY = Math.max(0, Math.min(event.y, height));
         let newScore = y.invert(newY);
         newScore = Math.round(newScore * 20) / 20;
         newScore = Math.max(0, Math.min(newScore, 1));
-  
-        const otherTotal = emotionScores.filter(e => e.emotion !== d.emotion)
-                                        .reduce((acc, cur) => acc + cur.score, 0);
-        const remaining = 1 - newScore;
-        d.score = newScore;
+      
+        // Set the new value for the dragged emotion.
         sentenceData.emotions[d.emotion] = newScore;
-  
+      
+        // Recalculate the total and normalize all emotion values.
+        let total = 0;
+        for (let key in sentenceData.emotions) {
+          total += sentenceData.emotions[key];
+        }
+        // Update each emotion so that the sum equals 1.
+        for (let key in sentenceData.emotions) {
+          sentenceData.emotions[key] = sentenceData.emotions[key] / total;
+        }
+      
+        // Update the local array of scores used by the chart.
         emotionScores.forEach(e => {
-          if (e.emotion !== d.emotion) {
-            e.score = otherTotal > 0 ? e.score / otherTotal * remaining : remaining / (emotionScores.length - 1);
-          }
+          e.score = sentenceData.emotions[e.emotion];
         });
-  
+      
+        // Update the bars.
         svg.selectAll(".bar")
           .data(emotionScores)
           .attr("y", d => {
@@ -208,7 +216,7 @@ class EmotionAnalysisVisualization {
             return computedHeight < dynamicMinHeight ? height - dynamicMinHeight : y(d.score);
           })
           .attr("height", d => Math.max(height - y(d.score), dynamicMinHeight));
-  
+      
         svg.selectAll(".label")
           .data(emotionScores)
           .attr("y", d => {
@@ -216,15 +224,11 @@ class EmotionAnalysisVisualization {
             return (computedHeight < dynamicMinHeight ? height - dynamicMinHeight : y(d.score)) - 5;
           })
           .text(d => `${Math.round(d.score * 100)}%`);
-  
+      
         tooltip.html(`${d.emotion}: ${Math.round(d.score * 100)}%`)
-          .style("left", (event.pageX + 10) + "px")
-          .style("top", (event.pageY - 20) + "px");
-      })
-      .on("end", function(event, d) {
-        d3.select(this).style("opacity", 1);
-        tooltip.style("opacity", 0);
-      });
+               .style("left", (event.pageX + 10) + "px")
+               .style("top", (event.pageY - 20) + "px");
+      })      
   
     // Draw bars with tooltip and drag events
     svg.selectAll(".bar")
