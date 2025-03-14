@@ -75,13 +75,6 @@ html, body {
   outline: none;
 }
 
-/* Remove the separate textarea styling (not used anymore) */
-/*
-#textInput {
-  display: none;
-}
-*/
-
 /* Buttons area in left panel */
 .buttons {
   display: flex;

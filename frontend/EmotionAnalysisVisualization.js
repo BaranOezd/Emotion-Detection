@@ -22,7 +22,6 @@ class EmotionAnalysisVisualization {
     this.lineChartModule = new LineChartModule("#linechart", this.emotions, this.emotionColors);
 
   }
-
   updateLineChart() {
     this.lineChartModule.render(this.data);
   }
