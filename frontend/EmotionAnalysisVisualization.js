@@ -1,4 +1,4 @@
-import BarChartModule from "./modules/BarChart.js";
+/* import BarChartModule from "./modules/BarChart.js";
 import LineChartModule from "./modules/LineChart.js";
 
 class EmotionAnalysisVisualization {
@@ -307,3 +307,4 @@ window.updateTextEditorWithHighlights = function(results, selectedIndex = null) 
     }, 3000);
   }
 });
+ */
