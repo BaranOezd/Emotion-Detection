@@ -137,6 +137,14 @@ class MainController {
   }
   
   updateVisualizations() {
+     // Iterate over each item in this.data to assign an index and preserve the original sentence.
+    this.data.forEach((result, index) => {
+    result.index = index; // Assign the index for later reference.
+    if (!result.originalSentence) {
+      result.originalSentence = result.sentence;
+    }
+  });
+
     // Update the line chart.
     this.lineChartModule.emotions = this.emotions;
     this.lineChartModule.emotionColors = this.emotionColors;
@@ -172,19 +180,37 @@ class MainController {
         if (data.error) {
           throw new Error(data.error);
         }
+        // Update the sentence text with the new sentence.
         sentenceData.sentence = data.new_sentence;
         this.data[sentenceData.index] = sentenceData;
-        this.textEditorModule.renderSentences(this.data, null, (selectedIndex) => {
-          const sentenceData = this.data[selectedIndex];
-          this.barChartModule.render(sentenceData, {
+        
+        // Re-render the sentence list with the updated data.
+        this.textEditorModule.renderSentences(this.data, sentenceData.index, () => {
+          // After rendering, explicitly set the "selected" class on the modified sentence.
+          const modifiedSentenceEl = document.querySelector(`.highlighted-sentence[data-index="${sentenceData.index}"]`);
+          if (modifiedSentenceEl) {
+            modifiedSentenceEl.classList.add("selected");
+          }
+          
+          // Render the bar chart for the modified sentence.
+          const selectedSentence = this.data[sentenceData.index];
+          this.barChartModule.render(selectedSentence, {
             onReset: (updatedSentenceData) => {
               this.data[updatedSentenceData.index] = updatedSentenceData;
               this.lineChartModule.render(this.data);
-              this.updateSentenceList();
+              // Re-render the sentence list while preserving the updated sentence's selection.
+              this.textEditorModule.renderSentences(this.data, updatedSentenceData.index, () => {
+                const updatedEl = document.querySelector(`.highlighted-sentence[data-index="${updatedSentenceData.index}"]`);
+                if (updatedEl) {
+                  updatedEl.classList.add("selected");
+                }
+              });
             },
             onChangeSentence: this.handleChangeSentence.bind(this)
           });
         });
+        
+        // Also update the line chart with the new data.
         this.lineChartModule.render(this.data);
       })
       .catch(error => {
@@ -192,6 +218,9 @@ class MainController {
         alert("An error occurred while modifying the sentence: " + error.message);
       });
   }
+  
+  
+  
 }
 
 export default MainController;
