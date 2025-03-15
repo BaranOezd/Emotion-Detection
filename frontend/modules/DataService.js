@@ -1,5 +1,3 @@
-// dataService.js
-
 export class DataService {
     constructor() {}
   
@@ -24,19 +22,19 @@ export class DataService {
       }
     }
   
-    async loadInitialData() {
-      const sampleText = "Enter some default text here for analysis."; // Replace with your sample text
-      try {
-        const data = await this.analyzeText(sampleText);
-        if (!data.results) {
-          throw new Error("Expected JSON object to contain a 'results' key");
-        }
-        return data.results;
-      } catch (error) {
-        console.error("Error loading JSON from /analyze:", error);
-        throw error;
-      }
-    }
+    // async loadInitialData() {
+    //   //const sampleText = "Enter some default text here for analysis."; // Replace with your sample text
+    //   try {
+    //     const data = await this.analyzeText(sampleText);
+    //     if (!data.results) {
+    //       throw new Error("Expected JSON object to contain a 'results' key");
+    //     }
+    //     return data.results;
+    //   } catch (error) {
+    //     console.error("Error loading JSON from /analyze:", error);
+    //     throw error;
+    //   }
+    // }
   
     async uploadFile(file) {
       const formData = new FormData();
