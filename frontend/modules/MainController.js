@@ -23,7 +23,7 @@ class MainController {
     this.lineChartModule = new LineChartModule("#linechart", this.emotions, this.emotionColors);
     
     this.setupEventListeners();
-    this.loadInitialData();
+    this.loadInitialData(); 
   }
   
   setupEventListeners() {
@@ -115,27 +115,17 @@ class MainController {
   }
   
   loadInitialData() {
-    // Load saved text if available.
+    // This method only restores text from localStorage (or uses default text)
+    // without triggering analysis.
+    const textEditor = document.getElementById("textEditor");
     const savedText = localStorage.getItem("savedText");
-    if (savedText) {
-      document.getElementById("textEditor").innerHTML = savedText;
+    if (savedText && savedText.trim() !== "") {
+      textEditor.innerHTML = savedText;
+    } else {
+      const sampleText = "Enter some default text here for analysis.";
+      textEditor.innerHTML = sampleText;
+      localStorage.setItem("savedText", sampleText);
     }
-    // Use sample text for initial analysis.
-    const sampleText = "Enter some default text here for analysis.";
-    this.setLoading(true);
-    this.api.analyzeText(sampleText)
-      .then(data => {
-        if (data.results) {
-          this.data = data.results;
-          this.updateEmotions();
-          this.updateVisualizations();
-          this.updateSentenceList();
-        } else {
-          throw new Error("Expected JSON object to contain a 'results' key");
-        }
-      })
-      .catch(error => console.error("Error loading initial data:", error))
-      .finally(() => this.setLoading(false));
   }
   
   updateEmotions() {
@@ -157,8 +147,10 @@ class MainController {
   
   updateSentenceList() {
     // Use the TextEditorModule to render sentences.
-    this.textEditorModule.renderSentences(this.data, sentenceData.index, (selectedIndex) => {
+    this.textEditorModule.renderSentences(this.data, null, (selectedIndex) => {
+      // Retrieve sentenceData using the provided selectedIndex.
       const sentenceData = this.data[selectedIndex];
+      
       // When a sentence is clicked, render its bar chart.
       this.barChartModule.render(sentenceData, {
         onReset: (updatedSentenceData) => {
@@ -166,6 +158,7 @@ class MainController {
           this.lineChartModule.render(this.data);
           // Optionally, re-render the sentence list to update the selection.
           this.textEditorModule.renderSentences(this.data, updatedSentenceData.index, (idx) => {
+            // Additional callback logic if needed.
           });
         },
         onChangeSentence: this.handleChangeSentence.bind(this)
