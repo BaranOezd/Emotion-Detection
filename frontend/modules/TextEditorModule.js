@@ -2,7 +2,20 @@ export default class TextEditorModule {
   constructor(editorSelector) {
     this.editor = document.querySelector(editorSelector);
     if (!this.editor) {
+      console.warn(`No editor found with selector: ${editorSelector}`);
+      return;
     }
+    
+    // Restore saved content if available.
+    const savedText = localStorage.getItem("savedText");
+    if (savedText) {
+      this.editor.innerHTML = savedText;
+    }
+    
+    // Save content on each input event.
+    this.editor.addEventListener("input", () => {
+      localStorage.setItem("savedText", this.editor.innerText);
+    });
   }
   
   /**
@@ -32,9 +45,8 @@ export default class TextEditorModule {
     const spans = this.editor.querySelectorAll(".highlighted-sentence");
     spans.forEach(span => {
       const selectSentence = () => {
-        // Debug: log the sentence selection.
+        // Retrieve the sentence index using the data attribute.
         const index = span.getAttribute("data-index");
-        
         // Clear previous selections.
         spans.forEach(s => s.classList.remove("selected"));
         // Add "selected" class to the clicked sentence.
