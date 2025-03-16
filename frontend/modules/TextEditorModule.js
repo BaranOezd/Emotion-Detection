@@ -29,14 +29,14 @@ export default class TextEditorModule {
     
     // Build the HTML for each sentence with accessibility attributes.
     const updatedContent = results.map((item, index) => {
-      const selectedClass = (selectedIndex !== null && +selectedIndex === index) ? " selected" : "";
+      const selectedClass = (selectedIndex !== null && Number(selectedIndex) === index) ? " selected" : "";
       return `<span class="highlighted-sentence${selectedClass}" 
-                    data-index="${index}" 
-                    tabindex="0" 
-                    role="button" 
-                    aria-label="Sentence ${index + 1}: ${item.sentence}">
-                ${item.sentence}
-              </span>`;
+                      data-index="${index}" 
+                      tabindex="0" 
+                      role="button" 
+                      aria-label="Sentence ${index + 1}: ${item.sentence}">
+                  ${item.sentence}
+                </span>`;
     }).join(" ");
     
     this.editor.innerHTML = updatedContent;
@@ -46,7 +46,7 @@ export default class TextEditorModule {
     spans.forEach(span => {
       const selectSentence = () => {
         // Retrieve the sentence index using the data attribute.
-        const index = span.getAttribute("data-index");
+        const index = parseInt(span.getAttribute("data-index"), 10);
         // Clear previous selections.
         spans.forEach(s => s.classList.remove("selected"));
         // Add "selected" class to the clicked sentence.
@@ -54,7 +54,7 @@ export default class TextEditorModule {
         // Call the callback with the selected index.
         onSentenceSelect(index);
       };
-
+  
       // Listen for click events.
       span.addEventListener("click", selectSentence);
       // Listen for keyboard events for accessibility.
