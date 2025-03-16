@@ -22,19 +22,19 @@ export class DataService {
       }
     }
   
-    // async loadInitialData() {
-    //   //const sampleText = "Enter some default text here for analysis."; // Replace with your sample text
-    //   try {
-    //     const data = await this.analyzeText(sampleText);
-    //     if (!data.results) {
-    //       throw new Error("Expected JSON object to contain a 'results' key");
-    //     }
-    //     return data.results;
-    //   } catch (error) {
-    //     console.error("Error loading JSON from /analyze:", error);
-    //     throw error;
-    //   }
-    // }
+    /* loadInitialData() {
+      // This method only restores text from localStorage (or uses default text)
+      // without triggering analysis.
+      const textEditor = document.getElementById("textEditor");
+      const savedText = localStorage.getItem("savedText");
+      if (savedText && savedText.trim() !== "") {
+        textEditor.innerHTML = savedText;
+      } else {
+        const sampleText = "Enter some default text here for analysis.";
+        textEditor.innerHTML = sampleText;
+        localStorage.setItem("savedText", sampleText);
+      }
+    } */
   
     async uploadFile(file) {
       const formData = new FormData();

@@ -1,4 +1,4 @@
-export default class ApiModule {
+/* export default class ApiModule {
     analyzeText(text) {
       return fetch("/analyze", {
         method: "POST",
@@ -47,4 +47,4 @@ export default class ApiModule {
       });
     }
   }
-  
+   */
