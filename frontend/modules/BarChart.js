@@ -2,7 +2,7 @@ export default class BarChartModule {
   constructor(containerSelector, emotionColors, emotions) {
     this.containerSelector = containerSelector;
     this.emotionColors = emotionColors;
-    this.emotions = emotions; 
+    this.emotions = emotions;
     this.selectedEmotions = [];
   }
 
@@ -12,7 +12,7 @@ export default class BarChartModule {
 
   render(sentenceData, { onReset, onChangeSentence } = {}) {
     const barChartDiv = d3.select(this.containerSelector);
-    barChartDiv.html("");
+    barChartDiv.html(""); // Clear any existing content
 
     // Create or reuse tooltip element
     let tooltip = d3.select("body").select(".tooltip");
@@ -28,43 +28,22 @@ export default class BarChartModule {
         .style("opacity", 0);
     }
 
-    const originalEmotions = Object.assign({}, sentenceData.emotions);
+    // Set the baseline emotion values on sentenceData if not already set.
+    if (!sentenceData.originalEmotions) {
+      sentenceData.originalEmotions = Object.assign({}, sentenceData.emotions);
+    }
+
     if (!sentenceData.originalSentence) {
       sentenceData.originalSentence = sentenceData.sentence;
     }
 
-    // Reset button
-    barChartDiv.append("button")
-      .attr("id", "resetButton")
-      .text("Reset")
-      .style("margin-bottom", "10px")
-      .on("click", () => {
-        sentenceData.emotions = Object.assign({}, originalEmotions);
-        sentenceData.sentence = sentenceData.originalSentence;
-        if (onReset && typeof onReset === "function") {
-          onReset(sentenceData);
-        }
-        this.render(sentenceData, { onReset, onChangeSentence });
-      });
-
-    // Change Sentence button
-    barChartDiv.append("button")
-      .attr("id", "changeSentenceButton")
-      .text("Change Sentence")
-      .style("margin-left", "10px")
-      .style("margin-bottom", "10px")
-      .on("click", () => {
-        if (onChangeSentence && typeof onChangeSentence === "function") {
-          onChangeSentence(sentenceData);
-        }
-      });
-
-    // Set up margins and dimensions
-    const margin = { top: 40, right: 30, bottom: 100, left: 50 };
+    // Set up margins and dimensions.
+    const margin = { top: 20, right: 20, bottom: 20, left: 20 };
     const containerNode = barChartDiv.node();
     const width = containerNode.clientWidth - margin.left - margin.right;
     const height = containerNode.clientHeight - margin.top - margin.bottom;
 
+    // Append the SVG for the bar chart.
     const svg = barChartDiv.append("svg")
       .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
       .attr("preserveAspectRatio", "xMidYMid meet")
@@ -73,36 +52,10 @@ export default class BarChartModule {
       .append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
 
-    // Instead of using this.emotions directly, get keys from sentenceData.emotions if needed.
+    // Use provided emotions or keys from sentenceData.emotions.
     const emotions = this.emotions.length ? this.emotions : Object.keys(sentenceData.emotions);
 
-    // Define scales
-    const x = d3.scaleBand()
-      .domain(emotions)
-      .range([0, width])
-      .padding(0.2);
-
-    const y = d3.scaleLinear()
-      .domain([0, 1])
-      .nice()
-      .range([height, 0]);
-
-    // Append axes
-    const xAxis = svg.append("g")
-      .attr("transform", `translate(0,${height})`)
-      .call(d3.axisBottom(x));
-    xAxis.selectAll("text")
-      .style("text-anchor", "middle")
-      .style("font-size", "12px")
-      .attr("dy", "1.5em");
-
-    svg.append("g")
-      .call(d3.axisLeft(y)
-        .ticks(5)
-        .tickValues([0, 0.2, 0.4, 0.6, 0.8, 1])
-        .tickFormat(d => `${Math.round(d * 100)}%`));
-
-    // Normalize emotion scores so that their sum equals 1
+    // Normalize emotion scores so that their sum equals 1.
     let total = emotions.reduce((sum, emotion) => sum + (+sentenceData.emotions[emotion] || 0), 0);
     const emotionScores = emotions.map(emotion => {
       let raw = +sentenceData.emotions[emotion] || 0;
@@ -110,19 +63,42 @@ export default class BarChartModule {
       return { emotion, score: normalized };
     });
 
-    const minFraction = 0.03;
-    const dynamicMinHeight = height - y(minFraction);
+    // Define scales for a horizontal bar chart.
+    const y = d3.scaleBand()
+      .domain(emotions)
+      .range([0, height])
+      .padding(0.2);
 
+    const x = d3.scaleLinear()
+      .domain([0, 1])
+      .nice()
+      .range([0, width]);
+
+    // Append the x-axis on the top for percentage values.
+    svg.append("g")
+      .attr("transform", `translate(0,0)`)
+      .call(d3.axisTop(x)
+        .ticks(5)
+        .tickFormat(d => `${Math.round(d * 100)}%`))
+      .selectAll("text")
+      .style("font-size", "12px");
+
+    // Enforce a minimum bar width for visibility.
+    const minFraction = 0.03;
+    const dynamicMinWidth = x(minFraction);
+
+    // Define drag behavior for interactive score adjustment.
     const drag = d3.drag()
-      .on("start", function(event, d) {
+      .on("start", function (event, d) {
         d3.select(this).style("opacity", 0.7);
       })
       .on("drag", (event, d) => {
-        let newY = Math.max(0, Math.min(event.y, height));
-        let newScore = y.invert(newY);
+        let newX = Math.max(0, Math.min(event.x, width));
+        let newScore = x.invert(newX);
         newScore = Math.round(newScore * 20) / 20;
         newScore = Math.max(0, Math.min(newScore, 1));
 
+        // Update the score for the dragged emotion and re-normalize all scores.
         sentenceData.emotions[d.emotion] = newScore;
         let total = 0;
         for (let key in sentenceData.emotions) {
@@ -135,73 +111,97 @@ export default class BarChartModule {
           e.score = sentenceData.emotions[e.emotion];
         });
 
+        // Update the bar widths based on the new scores.
         svg.selectAll(".bar")
           .data(emotionScores)
-          .attr("y", d => {
-            const computedHeight = height - y(d.score);
-            return computedHeight < dynamicMinHeight ? height - dynamicMinHeight : y(d.score);
-          })
-          .attr("height", d => Math.max(height - y(d.score), dynamicMinHeight));
+          .attr("width", d => Math.max(x(d.score), dynamicMinWidth));
 
+        // Update the labels so they remain at the right end of each bar.
         svg.selectAll(".label")
           .data(emotionScores)
-          .attr("y", d => {
-            const computedHeight = height - y(d.score);
-            return (computedHeight < dynamicMinHeight ? height - dynamicMinHeight : y(d.score)) - 5;
-          })
-          .text(d => `${Math.round(d.score * 100)}%`);
+          .attr("x", d => Math.max(x(d.score), dynamicMinWidth) + 5)
+          .text(d => d.emotion);
 
         tooltip.html(`${d.emotion}: ${Math.round(d.score * 100)}%`)
-               .style("left", (event.pageX + 10) + "px")
-               .style("top", (event.pageY - 20) + "px");
+          .style("left", (event.pageX + 10) + "px")
+          .style("top", (event.pageY - 20) + "px");
       })
-      .on("end", function() {
+      .on("end", function () {
         d3.select(this).style("opacity", 1);
       });
 
+    // Draw horizontal bars for each emotion.
     svg.selectAll(".bar")
       .data(emotionScores)
       .enter().append("rect")
       .attr("class", "bar")
-      .attr("x", d => x(d.emotion))
-      .attr("y", d => {
-        const computedHeight = height - y(d.score);
-        return computedHeight < dynamicMinHeight ? height - dynamicMinHeight : y(d.score);
-      })
-      .attr("width", x.bandwidth())
-      .attr("height", d => Math.max(height - y(d.score), dynamicMinHeight))
+      .attr("y", d => y(d.emotion))
+      .attr("x", 0)
+      .attr("height", y.bandwidth())
+      .attr("width", d => Math.max(x(d.score), dynamicMinWidth))
       .style("fill", d => this.emotionColors[d.emotion])
       .style("cursor", "pointer")
       .attr("tabindex", 0)
       .attr("aria-label", d => `${d.emotion}: ${Math.round(d.score * 100)}%`)
-      .on("mouseover", function(event, d) {
+      .on("mouseover", function (event, d) {
         tooltip.style("opacity", 0.9)
-               .html(`${d.emotion}: ${Math.round(d.score * 100)}%`)
-               .style("left", (event.pageX + 10) + "px")
-               .style("top", (event.pageY - 20) + "px");
+          .html(`${d.emotion}: ${Math.round(d.score * 100)}%`)
+          .style("left", (event.pageX + 10) + "px")
+          .style("top", (event.pageY - 20) + "px");
         d3.select(this).style("stroke", "#000").style("stroke-width", "1px");
       })
-      .on("mousemove", function(event, d) {
+      .on("mousemove", function (event, d) {
         tooltip.style("left", (event.pageX + 10) + "px")
-               .style("top", (event.pageY - 20) + "px");
+          .style("top", (event.pageY - 20) + "px");
       })
-      .on("mouseout", function() {
+      .on("mouseout", function () {
         tooltip.style("opacity", 0);
         d3.select(this).style("stroke", "none");
       })
       .call(drag);
 
+    // Append labels to the right end of each bar showing the emotion names.
     svg.selectAll(".label")
       .data(emotionScores)
       .enter().append("text")
       .attr("class", "label")
-      .attr("x", d => x(d.emotion) + x.bandwidth() / 2)
-      .attr("y", d => {
-        const computedHeight = height - y(d.score);
-        return (computedHeight < dynamicMinHeight ? height - dynamicMinHeight : y(d.score)) - 5;
-      })
-      .attr("text-anchor", "middle")
+      .attr("y", d => y(d.emotion) + y.bandwidth() / 2 + 4)
+      .attr("x", d => Math.max(x(d.score), dynamicMinWidth) + 5)
+      .attr("text-anchor", "start")
       .style("font-size", "12px")
-      .text(d => `${Math.round(d.score * 100)}%`);
+      .text(d => d.emotion);
+
+    // Create a container for the buttons under the bar chart.
+    const buttonContainer = barChartDiv.append("div")
+      .attr("class", "barChart-buttons")
+      .style("margin-top", "10px");
+
+    // Reset button: resets both the emotion values and the sentence.
+    buttonContainer.append("button")
+    .attr("id", "resetButton")
+    .text("Reset")
+    .style("margin-right", "10px")
+    .on("click", () => {
+      // Reset the emotion values to their original levels.
+      sentenceData.emotions = Object.assign({}, sentenceData.originalEmotions);
+      // Reset the sentence structure to its original state.
+      sentenceData.sentence = sentenceData.originalSentence;
+      
+      if (onReset && typeof onReset === "function") {
+        onReset(sentenceData);
+      }
+      // Re-render the bar chart with the updated sentence data.
+      this.render(sentenceData, { onReset, onChangeSentence });  
+    });
+
+    // Change Sentence button.
+    buttonContainer.append("button")
+      .attr("id", "changeSentenceButton")
+      .text("Change Sentence")
+      .on("click", () => {
+        if (onChangeSentence && typeof onChangeSentence === "function") {
+          onChangeSentence(sentenceData);
+        }
+      });
   }
 }
