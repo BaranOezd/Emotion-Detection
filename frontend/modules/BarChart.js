@@ -13,7 +13,7 @@ export default class BarChartModule {
   render(sentenceData, { onReset, onChangeSentence } = {}) {
     const barChartDiv = d3.select(this.containerSelector);
     barChartDiv.html(""); // Clear any existing content
-
+  
     // Create or reuse tooltip element
     let tooltip = d3.select("body").select(".tooltip");
     if (tooltip.empty()) {
@@ -27,22 +27,19 @@ export default class BarChartModule {
         .style("pointer-events", "none")
         .style("opacity", 0);
     }
-
+  
     // Set the baseline emotion values on sentenceData if not already set.
-    if (!sentenceData.originalEmotions) {
-      sentenceData.originalEmotions = Object.assign({}, sentenceData.emotions);
-    }
-
-    if (!sentenceData.originalSentence) {
-      sentenceData.originalSentence = sentenceData.sentence;
-    }
-
+    sentenceData.originalEmotions = Object.assign({}, sentenceData.emotions);
+  
+    // Store the current index of the sentence
+    const currentIndex = sentenceData.index;
+  
     // Set up margins and dimensions.
     const margin = { top: 20, right: 20, bottom: 20, left: 20 };
     const containerNode = barChartDiv.node();
     const width = containerNode.clientWidth - margin.left - margin.right;
     const height = containerNode.clientHeight - margin.top - margin.bottom;
-
+  
     // Append the SVG for the bar chart.
     const svg = barChartDiv.append("svg")
       .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
@@ -51,10 +48,10 @@ export default class BarChartModule {
       .style("height", "100%")
       .append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
-
+  
     // Use provided emotions or keys from sentenceData.emotions.
     const emotions = this.emotions.length ? this.emotions : Object.keys(sentenceData.emotions);
-
+  
     // Normalize emotion scores so that their sum equals 1.
     let total = emotions.reduce((sum, emotion) => sum + (+sentenceData.emotions[emotion] || 0), 0);
     const emotionScores = emotions.map(emotion => {
@@ -62,18 +59,18 @@ export default class BarChartModule {
       let normalized = total > 0 ? raw / total : 0;
       return { emotion, score: normalized };
     });
-
+  
     // Define scales for a horizontal bar chart.
     const y = d3.scaleBand()
       .domain(emotions)
       .range([0, height])
       .padding(0.2);
-
+  
     const x = d3.scaleLinear()
       .domain([0, 1])
       .nice()
       .range([0, width]);
-
+  
     // Append the x-axis on the top for percentage values.
     svg.append("g")
       .attr("transform", `translate(0,0)`)
@@ -82,11 +79,11 @@ export default class BarChartModule {
         .tickFormat(d => `${Math.round(d * 100)}%`))
       .selectAll("text")
       .style("font-size", "12px");
-
+  
     // Enforce a minimum bar width for visibility.
     const minFraction = 0.03;
     const dynamicMinWidth = x(minFraction);
-
+  
     // Define drag behavior for interactive score adjustment.
     const drag = d3.drag()
       .on("start", function (event, d) {
@@ -97,7 +94,7 @@ export default class BarChartModule {
         let newScore = x.invert(newX);
         newScore = Math.round(newScore * 20) / 20;
         newScore = Math.max(0, Math.min(newScore, 1));
-
+  
         // Update the score for the dragged emotion and re-normalize all scores.
         sentenceData.emotions[d.emotion] = newScore;
         let total = 0;
@@ -110,18 +107,18 @@ export default class BarChartModule {
         emotionScores.forEach(e => {
           e.score = sentenceData.emotions[e.emotion];
         });
-
+  
         // Update the bar widths based on the new scores.
         svg.selectAll(".bar")
           .data(emotionScores)
           .attr("width", d => Math.max(x(d.score), dynamicMinWidth));
-
+  
         // Update the labels so they remain at the right end of each bar.
         svg.selectAll(".label")
           .data(emotionScores)
           .attr("x", d => Math.max(x(d.score), dynamicMinWidth) + 5)
           .text(d => d.emotion);
-
+  
         tooltip.html(`${d.emotion}: ${Math.round(d.score * 100)}%`)
           .style("left", (event.pageX + 10) + "px")
           .style("top", (event.pageY - 20) + "px");
@@ -129,7 +126,7 @@ export default class BarChartModule {
       .on("end", function () {
         d3.select(this).style("opacity", 1);
       });
-
+  
     // Draw horizontal bars for each emotion.
     svg.selectAll(".bar")
       .data(emotionScores)
@@ -159,7 +156,7 @@ export default class BarChartModule {
         d3.select(this).style("stroke", "none");
       })
       .call(drag);
-
+  
     // Append labels to the right end of each bar showing the emotion names.
     svg.selectAll(".label")
       .data(emotionScores)
@@ -170,35 +167,43 @@ export default class BarChartModule {
       .attr("text-anchor", "start")
       .style("font-size", "12px")
       .text(d => d.emotion);
-
+  
     // Create a container for the buttons under the bar chart.
     const buttonContainer = barChartDiv.append("div")
       .attr("class", "barChart-buttons")
       .style("margin-top", "10px");
-
-    // Reset button: resets both the emotion values and the sentence.
-    buttonContainer.append("button")
-    .attr("id", "resetButton")
-    .text("Reset")
-    .style("margin-right", "10px")
-    .on("click", () => {
-      // Reset the emotion values to their original levels.
-      sentenceData.emotions = Object.assign({}, sentenceData.originalEmotions);
-      // Reset the sentence structure to its original state.
-      sentenceData.sentence = sentenceData.originalSentence;
-      
-      if (onReset && typeof onReset === "function") {
-        onReset(sentenceData);
-      }
-      // Re-render the bar chart with the updated sentence data.
-      this.render(sentenceData, { onReset, onChangeSentence });  
-    });
-
+  
+      buttonContainer.append("button")
+      .attr("id", "resetButton")
+      .text("Reset")
+      .style("margin-right", "10px")
+      .on("click", () => {
+        // Preserve the current index
+        const currentIndex = sentenceData.index;
+        
+        // Revert to the originally stored emotion values and sentence text.
+        sentenceData.emotions = Object.assign({}, sentenceData.originalEmotions);
+        sentenceData.sentence = sentenceData.originalSentence;
+        sentenceData.index = currentIndex;
+        
+        // Immediately re-render this chart so that the bars update.
+        this.clear();
+        this.render(sentenceData, { onReset, onChangeSentence });
+        
+        // Optionally, notify the parent controller of the reset.
+        if (onReset && typeof onReset === "function") {
+          onReset(sentenceData);
+        }
+      });
+    
+  
     // Change Sentence button.
     buttonContainer.append("button")
       .attr("id", "changeSentenceButton")
       .text("Change Sentence")
       .on("click", () => {
+        // Ensure the index is preserved
+        sentenceData.index = currentIndex;
         if (onChangeSentence && typeof onChangeSentence === "function") {
           onChangeSentence(sentenceData);
         }

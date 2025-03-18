@@ -9,6 +9,7 @@ class MainController {
     this.textEditorModule = new TextEditorModule("#textEditor");
     this.data = [];
     this.emotions = [];
+    this.currentSelectedIndex = -1;
     this.emotionColors = {
       joy: "#FFEB3B",
       sadness: "#2196F3",
@@ -23,7 +24,6 @@ class MainController {
     this.lineChartModule = new LineChartModule("#linechart", this.emotions, this.emotionColors);
     
     this.setupEventListeners();
-    this.loadInitialData(); 
   }
   
   setupEventListeners() {
@@ -88,12 +88,6 @@ class MainController {
           .finally(() => this.setLoading(false));
       };
     });
-    
-    // Save editor changes to localStorage.
-    const editor = document.getElementById("textEditor");
-    editor.addEventListener("input", () => {
-      localStorage.setItem("savedText", editor.innerText);
-    });
   }
   
   setLoading(isLoading) {
@@ -112,20 +106,6 @@ class MainController {
     setTimeout(() => { feedbackEl.textContent = ""; }, 3000);
   }
   
-    loadInitialData() {
-    // This method only restores text from localStorage (or uses default text)
-    // without triggering analysis.
-    const textEditor = document.getElementById("textEditor");
-    const savedText = localStorage.getItem("savedText");
-    if (savedText && savedText.trim() !== "") {
-      textEditor.innerHTML = savedText;
-    } else {
-      const sampleText = "Enter some default text here for analysis.";
-      textEditor.innerHTML = sampleText;
-      localStorage.setItem("savedText", sampleText);
-    }
-  } 
-  
   updateEmotions() {
     if (this.data.length > 0) {
       this.emotions = Object.keys(this.data[0].emotions);
@@ -135,9 +115,9 @@ class MainController {
   }
   
   updateVisualizations() {
-    // Iterate over each item in this.data to assign an index and preserve the original sentence.
+    // Iterate over each item to assign an index and preserve the original sentence.
     this.data.forEach((result, index) => {
-      result.index = index; // Assign the index for later reference.
+      result.index = index;
       if (!result.originalSentence) {
         result.originalSentence = result.sentence;
       }
@@ -152,39 +132,42 @@ class MainController {
   } 
   
   updateSentenceList() {
-    // Use the TextEditorModule to render sentences.
+    // Render the sentences; when one is selected, update its index in the data.
     this.textEditorModule.renderSentences(this.data, null, (selectedIndex) => {
-      // Remove any existing "selected" classes.
-      document.querySelectorAll('.highlighted-sentence.selected').forEach(el => {
-        el.classList.remove('selected');
-      });
-  
-      // Ensure the selectedIndex corresponds to valid data.
       if (selectedIndex >= 0 && selectedIndex < this.data.length) {
-        const sentenceData = this.data[selectedIndex]; // Declare sentenceData
+        const sentenceData = this.data[selectedIndex];
+        sentenceData.index = selectedIndex;
         
-        // Add the "selected" class to the clicked sentence element.
-        const sentenceElement = document.querySelector(`.highlighted-sentence[data-index="${selectedIndex}"]`);
-        if (sentenceElement) {
-          sentenceElement.classList.add("selected");
-        }
-  
+        // Store the currently selected index globally in the controller
+        this.lastSelectedIndex = selectedIndex;
+        
         // Render the bar chart for the selected sentence.
         this.barChartModule.render(sentenceData, {
           onReset: (updatedSentenceData) => {
-            this.data[updatedSentenceData.index] = updatedSentenceData;
+            // Use the index from the updated sentence data
+            const indexToUpdate = updatedSentenceData.index;
+            
+            // Update the data array with the reset sentence data
+            this.data[indexToUpdate] = updatedSentenceData;
+            
+            // Re-render the line chart
             this.lineChartModule.render(this.data);
-            // Re-render the sentence list with the updated selection.
-            this.textEditorModule.renderSentences(this.data, updatedSentenceData.index, () => {
-              // Remove existing selections.
-              document.querySelectorAll('.highlighted-sentence.selected').forEach(el => {
-                el.classList.remove('selected');
+            
+            // Re-render the sentences with the SAME index selected
+            // This is crucial - we're explicitly telling the TextEditorModule which sentence to highlight
+            this.textEditorModule.renderSentences(this.data, indexToUpdate, (newIndex) => {
+              // Update the lastSelectedIndex when a new sentence is selected after reset
+              this.lastSelectedIndex = newIndex;
+              
+              // Get the newly selected sentence data
+              const newSentenceData = this.data[newIndex];
+              newSentenceData.index = newIndex;
+              
+              // Render the bar chart for the newly selected sentence
+              this.barChartModule.render(newSentenceData, {
+                onReset: this.onReset.bind(this),
+                onChangeSentence: this.handleChangeSentence.bind(this)
               });
-              // Reapply the "selected" class.
-              const updatedEl = document.querySelector(`.highlighted-sentence[data-index="${updatedSentenceData.index}"]`);
-              if (updatedEl) {
-                updatedEl.classList.add("selected");
-              }
             });
           },
           onChangeSentence: this.handleChangeSentence.bind(this)
@@ -195,37 +178,53 @@ class MainController {
     });
   }
   
+  onReset(updatedSentenceData) {
+    const indexToUpdate = updatedSentenceData.index;
+    this.data[indexToUpdate] = updatedSentenceData;
+    this.lineChartModule.render(this.data);
+    this.textEditorModule.renderSentences(this.data, indexToUpdate, (newIndex) => {
+      this.lastSelectedIndex = newIndex;
+      const newSentenceData = this.data[newIndex];
+      newSentenceData.index = newIndex;
+      this.barChartModule.render(newSentenceData, {
+        onReset: this.onReset.bind(this),
+        onChangeSentence: this.handleChangeSentence.bind(this)
+      });
+    });
+  }
   handleChangeSentence(sentenceData) {
+    
+    const currentIndex = sentenceData.index;    
     this.dataService.modifySentence(sentenceData)
       .then(data => {
         if (data.error) {
           throw new Error(data.error);
         }
-        // Update the sentence text with the new sentence.
-        sentenceData.sentence = data.new_sentence;
-        this.data[sentenceData.index] = sentenceData;
         
-        // Re-render the sentence list with the modified sentence selected.
-        this.textEditorModule.renderSentences(this.data, sentenceData.index, (selectedIndex) => {
-          // This callback fires when a user clicks a sentence.
-          // The renderSentences method itself clears old highlights and applies "selected" to the clicked element.
+        // Update the sentence with the new text
+        sentenceData.sentence = data.new_sentence;       
+     
+        sentenceData.index = currentIndex;     
+      
+        this.data[currentIndex] = sentenceData;
+        
+        // Re-render the sentence list with the same sentence selected
+        this.textEditorModule.renderSentences(this.data, currentIndex, (selectedIndex) => {
+          // Update the lastSelectedIndex
+          this.lastSelectedIndex = selectedIndex;
           
-          // Additionally, you can update the bar chart based on the new selection:
+          // Get the selected sentence data
           const selectedSentence = this.data[selectedIndex];
+          selectedSentence.index = selectedIndex;
+          
+          // Render the bar chart for the selected sentence
           this.barChartModule.render(selectedSentence, {
-            onReset: (updatedSentenceData) => {
-              this.data[updatedSentenceData.index] = updatedSentenceData;
-              this.lineChartModule.render(this.data);
-              // Re-render sentence list with the updated selection.
-              this.textEditorModule.renderSentences(this.data, updatedSentenceData.index, () => {
-                // The render function will take care of highlighting the correct sentence.
-              });
-            },
+            onReset: this.onReset.bind(this),
             onChangeSentence: this.handleChangeSentence.bind(this)
           });
         });
         
-        // Update the line chart with the new data.
+        // Update the line chart
         this.lineChartModule.render(this.data);
       })
       .catch(error => {
@@ -233,8 +232,6 @@ class MainController {
         alert("An error occurred while modifying the sentence: " + error.message);
       });
   }
-  
-  
 }
 
 export default MainController;
