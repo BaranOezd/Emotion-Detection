@@ -6,10 +6,14 @@ export default class TextEditorModule {
       return;
     }
     
-    // Restore saved content if available.
+    // Restore saved content if available, or load default sample text.
     const savedText = localStorage.getItem("savedText");
     if (savedText) {
       this.editor.innerHTML = savedText;
+    } else {
+      const sampleText = "Enter some default text here for analysis.";
+      this.editor.innerHTML = sampleText;
+      localStorage.setItem("savedText", sampleText);
     }
     
     // Save content on each input event.
@@ -44,14 +48,14 @@ export default class TextEditorModule {
     // Attach event listeners to each sentence span.
     const spans = this.editor.querySelectorAll(".highlighted-sentence");
     spans.forEach(span => {
+      // Define the selection behavior.
       const selectSentence = () => {
-        // Retrieve the sentence index using the data attribute.
-        const index = parseInt(span.getAttribute("data-index"), 10);
-        // Clear previous selections.
+        // Remove the "selected" class from all sentence spans.
         spans.forEach(s => s.classList.remove("selected"));
-        // Add "selected" class to the clicked sentence.
+        // Add the "selected" class to the clicked/activated span.
         span.classList.add("selected");
-        // Call the callback with the selected index.
+        // Call the provided callback with the index.
+        const index = parseInt(span.getAttribute("data-index"), 10);
         onSentenceSelect(index);
       };
   
