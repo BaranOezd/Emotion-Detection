@@ -138,32 +138,39 @@ class MainController {
         const sentenceData = this.data[selectedIndex];
         sentenceData.index = selectedIndex;
         
+        // Reset emotion values to their original state (before any modifications)
+        // Check if the original state exists; if not, create it.
+        if (sentenceData.originalEmotions) {
+          sentenceData.emotions = Object.assign({}, sentenceData.originalEmotions);
+        } else {
+          sentenceData.originalEmotions = Object.assign({}, sentenceData.emotions);
+        }
+        
         // Store the currently selected index globally in the controller
         this.lastSelectedIndex = selectedIndex;
         
         // Render the bar chart for the selected sentence.
         this.barChartModule.render(sentenceData, {
           onReset: (updatedSentenceData) => {
-            // Use the index from the updated sentence data
+            // Use the index from the updated sentence data.
             const indexToUpdate = updatedSentenceData.index;
             
-            // Update the data array with the reset sentence data
+            // Update the data array with the reset sentence data.
             this.data[indexToUpdate] = updatedSentenceData;
             
-            // Re-render the line chart
+            // Re-render the line chart.
             this.lineChartModule.render(this.data);
             
-            // Re-render the sentences with the SAME index selected
-            // This is crucial - we're explicitly telling the TextEditorModule which sentence to highlight
+            // Re-render the sentences with the SAME index selected.
             this.textEditorModule.renderSentences(this.data, indexToUpdate, (newIndex) => {
-              // Update the lastSelectedIndex when a new sentence is selected after reset
+              // Update the lastSelectedIndex when a new sentence is selected after reset.
               this.lastSelectedIndex = newIndex;
               
-              // Get the newly selected sentence data
+              // Get the newly selected sentence data.
               const newSentenceData = this.data[newIndex];
               newSentenceData.index = newIndex;
               
-              // Render the bar chart for the newly selected sentence
+              // Render the bar chart for the newly selected sentence.
               this.barChartModule.render(newSentenceData, {
                 onReset: this.onReset.bind(this),
                 onChangeSentence: this.handleChangeSentence.bind(this)
@@ -177,6 +184,7 @@ class MainController {
       }
     });
   }
+  
   
   onReset(updatedSentenceData) {
     const indexToUpdate = updatedSentenceData.index;
