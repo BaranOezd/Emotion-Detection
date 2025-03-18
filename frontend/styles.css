@@ -1,97 +1,92 @@
-/* Ensure the overall page fits within the viewport */
+/* Basic resets and flexible box sizing */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 html, body {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
-  overflow: hidden;
-  box-sizing: border-box;
   font-family: Arial, sans-serif;
 }
 
-/* Container for the entire app */
+/* Main container using Flexbox for full viewport */
 .container {
   display: flex;
   flex-direction: column;
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
-  box-sizing: border-box;
-}
-
-/* Title remains fixed at the top */
-.title {
-  flex: 0 0 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 5px;
-}
-
-/* Body fills the rest of the space */
-.body {
-  flex: 1;
-  display: flex;
-  flex-direction: row;
-  gap: 2%;
-  overflow: hidden;
-  box-sizing: border-box;
-}
-
-/* Left panel (for the text editor) */
-#sentences {
-  flex: 1.5;
-  display: flex;
-  flex-direction: column;
-  background-color: #fff;
-  border-radius: 8px;
-  padding: 10px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-.highlighted-sentence {
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.highlighted-sentence.selected {
-  background-color: #fffa72; 
-}
-
-
-/* Full-text editor styling */
-.text-editor {
-  flex: 1;
   width: 100%;
   height: 100%;
-  padding: 10px;
-  font-size: 1rem;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  overflow-y: auto;
-  box-sizing: border-box;
-  outline: none;
 }
 
-/* Buttons area in left panel */
-.buttons {
+/* Header area */
+.title {
+  flex: 0 1 auto;
+  padding: 1rem;
+  text-align: center;
+}
+
+/* Body using CSS Grid for three-column responsive layout */
+.body {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  grid-template-areas: 
+    "linechart editor barchart";
+  gap: 1rem;
+  padding: 1rem;
+}
+
+/* Line chart container on the left */
+#linechart {
+  grid-area: linechart;
+  background-color: #fff;
+  border-radius: 0.5rem;
+  padding: 1rem;
   display: flex;
-  gap: 10px;
+  flex-direction: column;
+}
+
+/* Editor container in the center */
+.editor-container {
+  grid-area: editor;
+  display: flex;
+  flex-direction: column;
   justify-content: center;
-  padding: 10px 0;
-  box-sizing: border-box;
+  align-items: center;
+}
+
+/* Text editor styling */
+.text-editor {
+  width: 100%;
+  height: 70%;
+  padding: 1rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 0.5rem;
+  overflow-y: auto;
+  outline: none;
+  background-color: #fff;
+}
+
+/* Button styling */
+.buttons {
+  margin-top: 1rem;
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
 }
 
 .buttons button {
-  padding: 10px 20px;
+  padding: 0.5rem 1rem;
   font-size: 1rem;
   border: none;
-  border-radius: 5px;
+  border-radius: 0.5rem;
   cursor: pointer;
   background-color: #007bff;
-  color: white;
+  color: #fff;
   transition: background-color 0.3s ease;
 }
 
@@ -99,62 +94,52 @@ html, body {
   background-color: #0056b3;
 }
 
-/* Charts container: split steam graph and bar chart 50-50 */
-.charts {
-  flex: 2.5;
+/* Bar chart container on the right */
+#barchart {
+  grid-area: barchart;
+  background-color: #fff;
+  border-radius: 0.5rem;
+  padding: 1rem;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  overflow: hidden;
-  box-sizing: border-box;
 }
 
-#linechart,
-#barchart {
-  flex: 1;  /* Each takes half of the charts container */
-  background-color: #fff;
-  border-radius: 8px;
-  padding: 10px;
-  box-sizing: border-box;
-}
-
-/* Ensure SVGs fill their containers */
-#linechart svg,
-#barchart svg {
+/* Ensure that D3 SVG elements fill their container */
+#barchart svg,
+#linechart svg {
   width: 100%;
   height: 100%;
   display: block;
 }
 
-/* Reset Zoom Button Styling */
-.reset-zoom {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 10;
+.highlighted-sentence.selected {
+  background-color: #ffff62; /* Light yellow highlight */
+}
+
+/* Bar chart buttons container styling */
+/* Bar chart buttons container styling */
+.barChart-buttons {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+/* Styling for buttons within the bar chart container */
+.barChart-buttons button {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.85rem;
+  border: none;
+  border-radius: 3px;
   cursor: pointer;
+  background-color: #007bff;
+  color: #fff;
+  transition: background-color 0.3s ease;
 }
 
-.reset-zoom rect {
-  fill: #007bff;
-  stroke: #0056b3;
-  stroke-width: 1;
-  rx: 5;
-  ry: 5;
-  transition: fill 0.3s ease, stroke 0.3s ease;
-}
-
-.reset-zoom rect:hover {
-  fill: #0056b3;
-  stroke: #004080;
-}
-
-.reset-zoom text {
-  fill: white;
-  font-size: 14px;
-  font-family: Arial, sans-serif;
-  font-weight: bold;
-  pointer-events: none;
+.barChart-buttons button:hover {
+  background-color: #0056b3;
 }
 
 /* Loading spinner styling */
@@ -164,10 +149,10 @@ html, body {
   left: 50%;
   transform: translate(-50%, -50%);
   background-color: rgba(255, 255, 255, 0.9);
-  padding: 20px 30px;
-  border-radius: 8px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-  font-size: 16px;
-  display: none; 
+  padding: 1rem 1.5rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 0.125rem 0.375rem rgba(0, 0, 0, 0.2);
+  font-size: 1rem;
+  display: none;
   z-index: 1000;
 }
