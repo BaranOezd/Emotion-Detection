@@ -48,20 +48,14 @@ export default class TextEditorModule {
     // Attach event listeners to each sentence span.
     const spans = this.editor.querySelectorAll(".highlighted-sentence");
     spans.forEach(span => {
-      // Define the selection behavior.
       const selectSentence = () => {
-        // Remove the "selected" class from all sentence spans.
         spans.forEach(s => s.classList.remove("selected"));
-        // Add the "selected" class to the clicked/activated span.
         span.classList.add("selected");
-        // Call the provided callback with the index.
         const index = parseInt(span.getAttribute("data-index"), 10);
         onSentenceSelect(index);
       };
   
-      // Listen for click events.
       span.addEventListener("click", selectSentence);
-      // Listen for keyboard events for accessibility.
       span.addEventListener("keydown", (event) => {
         if (event.key === "Enter" || event.key === " ") {
           selectSentence();
