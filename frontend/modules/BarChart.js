@@ -58,8 +58,7 @@ export default class BarChartModule {
       let raw = +sentenceData.emotions[emotion] || 0;
       let normalized = total > 0 ? raw / total : 0;
       return { emotion, score: normalized };
-    });
-  
+    });      
     // Define scales for a horizontal bar chart.
     const y = d3.scaleBand()
       .domain(emotions)
@@ -127,15 +126,15 @@ export default class BarChartModule {
         d3.select(this).style("opacity", 1);
       });
   
-    // Draw horizontal bars for each emotion.
-    svg.selectAll(".bar")
+      // Draw horizontal bars for each emotion with initial width set to 0.
+      const bars = svg.selectAll(".bar")
       .data(emotionScores)
       .enter().append("rect")
       .attr("class", "bar")
       .attr("y", d => y(d.emotion))
       .attr("x", 0)
       .attr("height", y.bandwidth())
-      .attr("width", d => Math.max(x(d.score), dynamicMinWidth))
+      .attr("width", 0)  // Start at 0 width for animation
       .style("fill", d => this.emotionColors[d.emotion])
       .style("cursor", "pointer")
       .attr("tabindex", 0)
@@ -156,6 +155,11 @@ export default class BarChartModule {
         d3.select(this).style("stroke", "none");
       })
       .call(drag);
+  
+      // Animate the bars to their final width.
+      bars.transition()
+      .duration(500)  // Animation duration in milliseconds (1 second here)
+      .attr("width", d => Math.max(x(d.score), dynamicMinWidth));
   
     // Append labels to the right end of each bar showing the emotion names.
     svg.selectAll(".label")
