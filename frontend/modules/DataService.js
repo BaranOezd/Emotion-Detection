@@ -20,22 +20,8 @@ export class DataService {
         console.error("Error analyzing text:", error);
         throw error;
       }
-    }
-  
-    /* loadInitialData() {
-      // This method only restores text from localStorage (or uses default text)
-      // without triggering analysis.
-      const textEditor = document.getElementById("textEditor");
-      const savedText = localStorage.getItem("savedText");
-      if (savedText && savedText.trim() !== "") {
-        textEditor.innerHTML = savedText;
-      } else {
-        const sampleText = "Enter some default text here for analysis.";
-        textEditor.innerHTML = sampleText;
-        localStorage.setItem("savedText", sampleText);
-      }
-    } */
-  
+    }  
+    
     async uploadFile(file) {
       const formData = new FormData();
       formData.append("file", file);
