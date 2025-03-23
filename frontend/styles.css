@@ -21,13 +21,6 @@ html, body {
   height: 100%;
 }
 
-/* Header area */
-.title {
-  flex: 0 1 auto;
-  padding: 1rem;
-  text-align: center;
-}
-
 /* Body using CSS Grid for three-column responsive layout */
 .body {
   flex: 1 1 auto;
@@ -44,7 +37,7 @@ html, body {
   grid-area: linechart;
   background-color: #fff;
   border-radius: 0.5rem;
-  padding: 1rem;
+  padding-top: 1rem;
   display: flex;
   flex-direction: column;
 }
