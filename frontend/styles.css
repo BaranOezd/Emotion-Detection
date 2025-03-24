@@ -34,18 +34,30 @@ html, body {
 
 }
 
-/* Line chart container on the left */
+/* Parent container for the module */
 #linechart {
-  grid-area: linechart;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* prevent whole container scrolling */
   background-color: #fff;
   border-radius: 0.5rem;
   padding-top: 1rem;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto; 
 }
 
-/* Editor container in the center */
+/* Chart container takes available vertical space and scrolls if needed */
+#linechart .chart-container {
+  flex: 1 1 auto;
+  overflow-y: auto;
+}
+
+/* Legend container has a fixed height so it always stays visible */
+#linechart .legend-container {
+  flex: 0 0 auto;
+  height: 80px; /* must match the legend height in your module */
+}
+
 /* Editor container in the center */
 .editor-container {
   grid-area: editor;

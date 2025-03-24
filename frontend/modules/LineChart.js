@@ -6,57 +6,52 @@ export default class LineChartModule {
     this.selectedEmotions = [];
   }
 
-  // Main render function to draw the chart and the legend below it.
+  // Render function that creates separate sub-containers for the chart and legend.
   render(data) {
     const container = d3.select(this.containerSelector);
     container.html("");
 
-    // Get container dimensions.
-    const containerNode = container.node();
-    const fullWidth = containerNode.clientWidth;
-    const fullHeight = containerNode.clientHeight;
+    // Create sub-containers: one for the chart (scrollable) and one for the legend (always visible)
+    const chartContainer = container.append("div")
+      .attr("class", "chart-container");
+    const legendContainer = container.append("div")
+      .attr("class", "legend-container");
 
-    // Define margins for the chart.
-    // Set the top margin to 0 to reduce empty space above the chart.
+    // Get container width (the container's height is controlled by CSS)
+    const fullWidth = container.node().clientWidth;
+    
+    // Compute natural chart height based on data (e.g., 30px per data row)
+    const rowHeight = 30;
+    const dynamicChartHeight = data.length * rowHeight;
+    
+    // Define margins for the chart
     const margin = { top: 0, right: 20, bottom: 20, left: 20 };
-
-    // Reserve a fixed height for the legend.
-    const legendHeight = 80; // Adjust as needed.
-    // The chart occupies the remaining height.
-    const chartHeight = fullHeight - legendHeight - margin.top - margin.bottom;
+    const totalChartHeight = dynamicChartHeight + margin.top + margin.bottom;
     const chartWidth = fullWidth - margin.left - margin.right;
 
-    // Create the main chart SVG.
-    const chartSvg = container.append("svg")
+    // Create the chart SVG inside the scrollable chart container.
+    const chartSvg = chartContainer.append("svg")
       .attr("class", "chart-svg")
-      .attr("viewBox", `0 0 ${chartWidth + margin.left + margin.right} ${chartHeight + margin.top + margin.bottom}`)
+      .attr("viewBox", `0 0 ${chartWidth + margin.left + margin.right} ${totalChartHeight}`)
       .attr("preserveAspectRatio", "xMidYMid meet")
       .style("width", "100%")
-      .style("height", `${chartHeight + margin.top + margin.bottom}px`)
+      // The SVG’s height is set naturally, which may exceed the visible area.
+      .style("height", `${totalChartHeight}px`)
       .append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
 
-    // Create a separate legend SVG positioned below the chart.
-    const legendSvg = container.append("svg")
-      .attr("class", "legend-svg")
-      .attr("viewBox", `0 0 ${chartWidth} ${legendHeight}`)
-      .attr("preserveAspectRatio", "xMidYMid meet")
-      .style("width", "100%")
-      .style("height", `${legendHeight}px`);
-
-    // Set up scales for the chart.
+    // Set up scales.
     const x = d3.scaleLinear().domain([0, 1]).nice().range([chartWidth, 0]);
     const y = d3.scalePoint()
       .domain(data.map((_, i) => i + 1))
-      .range([0, chartHeight])
-      .padding(0); // ensures the points are flush with the range ends
+      .range([0, dynamicChartHeight])
+      .padding(0);
     const yCenter = d => y(d);
 
     // Draw axes.
     chartSvg.append("g")
-      .attr("transform", `translate(0, ${chartHeight})`)
+      .attr("transform", `translate(0, ${dynamicChartHeight})`)
       .call(d3.axisBottom(x).ticks(5).tickFormat(d3.format(".1f")));
-
     chartSvg.append("g")
       .attr("transform", `translate(${chartWidth}, 0)`)
       .call(d3.axisRight(y).tickFormat(d => d));
@@ -84,24 +79,29 @@ export default class LineChartModule {
         .attr("d", line);
     });
 
-    // Draw the legend below the chart.
+    // Create the legend SVG inside the fixed legend container.
+    const legendHeight = 80; // Fixed height for legend.
+    const legendSvg = legendContainer.append("svg")
+      .attr("class", "legend-svg")
+      .attr("viewBox", `0 0 ${chartWidth} ${legendHeight}`)
+      .attr("preserveAspectRatio", "xMidYMid meet")
+      .style("width", "100%")
+      .style("height", `${legendHeight}px`);
+
     this.drawLegend(legendSvg, chartWidth, legendHeight);
   }
 
-  // Draw legend items arranged in 3 rows (3-decker layout).
+  // Legend drawing remains unchanged.
   drawLegend(legendSvg, chartWidth, legendHeight) {
     const numRows = 3; // Fixed 3 rows.
     const numCols = Math.ceil(this.emotions.length / numRows);
-    const rowHeight = legendHeight / numRows; // Use full available legend height.
+    const rowHeight = legendHeight / numRows;
     const colSpacing = chartWidth / numCols;
-    const legendPaddingX = 10; // Horizontal padding within each cell.
+    const legendPaddingX = 10;
 
-    // Create a group for legend items.
     const legendGroup = legendSvg.append("g")
       .attr("transform", "translate(0,0)");
 
-    // Place each legend item using column-first filling:
-    // row = i mod 3, col = Math.floor(i/3)
     this.emotions.forEach((emotion, i) => {
       const row = i % numRows;
       const col = Math.floor(i / numRows);
@@ -172,7 +172,6 @@ export default class LineChartModule {
             }
           }
   
-          // Update the opacity of lines based on selected emotions.
           if (this.selectedEmotions.length === 0) {
             d3.selectAll(".lines")
               .transition().duration(500)
@@ -192,10 +191,9 @@ export default class LineChartModule {
           }
         });
 
-      // Append a smaller rectangle and text label for the legend item.
       legendItem.append("rect")
-        .attr("width", 12)  // Smaller square.
-        .attr("height", 12) // Smaller square.
+        .attr("width", 12)
+        .attr("height", 12)
         .attr("fill", this.emotionColors[emotion])
         .attr("stroke", "#000");
 
