@@ -74,8 +74,10 @@ class EmotionsAnalyzer:
 
     def split_text_into_sentences(self, text):
         """
-        Splits text into sentences using spaCy's robust sentence segmentation.
+        Splits text into sentences using spaCy's robust sentence segmentation
+        while preserving the original white spaces.
         """
         doc = self.spacy_nlp(text)
-        sentences = [sent.text.strip() for sent in doc.sents]
+        sentences = [sent.text for sent in doc.sents]
         return sentences
+

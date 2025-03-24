@@ -9,10 +9,10 @@ export default class TextEditorModule {
     // Restore saved content if available, or load default sample text.
     const savedText = localStorage.getItem("savedText");
     if (savedText) {
-      this.editor.innerHTML = savedText;
+      this.editor.innerHTML = this._preserveWhitespace(savedText);
     } else {
       const sampleText = "Enter some default text here for analysis.";
-      this.editor.innerHTML = sampleText;
+      this.editor.innerHTML = this._preserveWhitespace(sampleText);
       localStorage.setItem("savedText", sampleText);
     }
     
@@ -20,6 +20,20 @@ export default class TextEditorModule {
     this.editor.addEventListener("input", () => {
       localStorage.setItem("savedText", this.editor.innerText);
     });
+  }
+  
+  /**
+   * Convert newlines to <br> tags and preserve consecutive white spaces.
+   * @param {string} text - The plain text to be converted.
+   * @returns {string} - The converted HTML string.
+   */
+  _preserveWhitespace(text) {
+    // Replace newline characters with <br> tags.
+    let preservedText = text.replace(/\n/g, '<br>');
+    // Replace occurrences of double spaces with a space and a non-breaking space.
+    // This will preserve multiple white spaces when rendered.
+    preservedText = preservedText.replace(/ {2}/g, ' &nbsp;');
+    return preservedText;
   }
   
   /**
@@ -34,14 +48,16 @@ export default class TextEditorModule {
     // Build the HTML for each sentence with accessibility attributes.
     const updatedContent = results.map((item, index) => {
       const selectedClass = (selectedIndex !== null && Number(selectedIndex) === index) ? " selected" : "";
+      // Use _preserveWhitespace to maintain white spaces within each sentence.
+      const sentenceHTML = this._preserveWhitespace(item.sentence);
       return `<span class="highlighted-sentence${selectedClass}" 
                       data-index="${index}" 
                       tabindex="0" 
                       role="button" 
                       aria-label="Sentence ${index + 1}: ${item.sentence}">
-                  ${item.sentence}
+                  ${sentenceHTML}
                 </span>`;
-    }).join(" ");
+    }).join(""); 
     
     this.editor.innerHTML = updatedContent;
     
