@@ -1,168 +1,244 @@
+/* CSS Variables */
+:root {
+  --color-primary: #007bff;
+  --color-primary-dark: #0056b3;
+  --color-text: #333;
+  --color-bg: #fff;
+  --color-bg-secondary: #f8f9fa;
+  --color-border: #ccc;
+  --color-highlight: #ffff62;
+  --color-disabled: #ccc;
+  --color-divider: #e0e0e0;
+  
+  --border-radius-sm: 0.4rem;
+  --border-radius: 0.5rem;
+  
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.1);
+  --shadow-md: 0 2px 4px rgba(0,0,0,0.1);
+  --shadow-lg: 0 4px 8px rgba(0,0,0,0.15);
+  
+  --transition-speed: 0.2s;
+}
+
+/* Reset and base styles */
 html, body {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
   font-family: Arial, sans-serif;
+  color: var(--color-text);
 }
 
-/* Main container using Flexbox for full viewport */
+/* Layout containers */
 .container {
   display: flex;
   flex-direction: column;
-  width: 100%;
   height: 100%;
 }
 
-/* Body section takes 80% of the container height */
 .body {
-  flex: 0 0 80%; /* Don't grow, don't shrink, take 80% */
+  flex: 0 0 75%; /* Reduced from 80% to 75% to give more space to bottom */
   display: grid;
   grid-template-columns: 1fr 2fr 1fr;
-  grid-template-areas: 
-    "linechart editor barchart";
-  gap: 1rem;
-  padding: 1rem;
-  overflow: hidden; /* Changed from auto to hidden */
+  grid-template-areas: "linechart editor barchart";
+  gap: var(--space-md);
+  padding: var(--space-md);
+  overflow: hidden;
 }
 
-/* Parent container for the module */
-#linechart {
+.bottom-container {
+  flex: 0 0 20%; /* Increased from 15% to 20% */
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  grid-template-areas: "lineChartLegend buttonsContainer barChartButtons";
+  padding: var(--space-sm);
+  background-color: var(--color-bg-secondary);
+  min-height: 0;
+  max-height: 20vh; /* Increased from 15vh to 20vh */
+}
+
+/* Chart containers */
+#linechart, #barchart {
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* prevent whole container scrolling */
+  overflow: hidden;
 }
 
-/* Chart container takes available vertical space and scrolls if needed */
-#linechart .chart-container {
-  flex: 1 1 auto;
-  overflow-y: auto;
+#barchart {
+  grid-area: barchart;
+  background-color: var(--color-bg);
+  border-radius: var(--border-radius);
+  padding: var(--space-md);
 }
 
-/* Style for the fixed x-axis container */
+.chart-container {
+  flex: 1;
+  overflow: auto;
+}
+
 #linechart .x-axis-container {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background-color: #fff;
-  border-top: 1px solid #eee;
+  inset: auto 0 0 0;
+  height: 30px;
+  background-color: var(--color-bg);
+  border-top: 1px solid var(--color-border);
   z-index: 1;
 }
 
-/* Legend container has a fixed height so it always stays visible */
-#linechart .legend-container {
-  flex: 0 0 auto;
-  height: 80px; /* must match the legend height in your module */
+/* SVG styling */
+svg {
+  display: block;
+  width: 100%;
 }
 
-/* Legend container styling */
+#barchart svg, #linechart svg {
+  height: 100%;
+}
+
+/* Legend-specific styles */
 #lineChartLegend {
   grid-area: lineChartLegend;
   display: flex;
   justify-content: center;
   align-items: center;
-  border-radius: 0.5rem;
+  border-radius: var(--border-radius);
+  padding: var(--space-xs);
+  min-height: 100px; /* Added minimum height */
+  height: 100%; /* Make sure it takes full height */
+  background-color: transparent; /* Remove background color */
+  box-shadow: none; /* Remove box shadow */
+  overflow: hidden; /* Prevent overflow */
+  /* Prevent text selection */
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 }
 
-/* Ensure legend SVG scales properly */
+#lineChartLegend:hover {
+  box-shadow: none; /* Remove hover effect */
+}
+
 #lineChartLegend svg {
   width: 100%;
-  height: auto;
+  height: 100%; /* Fill the container */
+  max-height: 100%; /* Don't exceed container height */
 }
 
-/* Editor container in the center */
+#lineChartLegend text {
+  /* Ensure text in SVG cannot be selected */
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  cursor: pointer;
+}
+
+/* Tooltip styles */
+.legend-tooltip {
+  position: absolute;
+  background: rgba(0,0,0,0.75);
+  color: white;
+  padding: 5px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 1000;
+  max-width: 200px;
+  transition: opacity 0.2s ease;
+}
+
+/* Editor components */
 .editor-container {
   grid-area: editor;
   display: flex;
   flex-direction: column;
-  width: 100%;
   height: 100%;
-  align-items: stretch;
-  min-height: 0; /* Prevents children from overflowing the container */
+  min-height: 0;
 }
 
 .text-editor {
-  flex: 1 1 auto; /* Grow to fill available space */
-  width: 100%;
+  flex: 1;
   font-size: 1rem;
-  border: 1px solid #ccc;
-  border-radius: 0.5rem;
-  padding: 1rem 1.2rem; /* Added horizontal and vertical padding */
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  padding: var(--space-md) var(--space-lg);
   overflow-y: auto; 
   outline: none;
-  background-color: #fff;
+  background-color: var(--color-bg);
 }
 
-.buttons {
-  flex: 0 0 auto; /* don't grow, just use content height */
-  display: flex;
-  justify-content: space-around;
-  width: 100%;
-  margin-top: 1rem; /* optional spacing */
-  margin-bottom: 2rem; /* optional spacing */
+.highlighted-sentence.selected {
+  background-color: var(--color-highlight); 
 }
 
-/* Updated consolidated button styles */
-.button {
-  padding: 0.4rem 0.8rem;
-  font-size: 0.9rem;
+/* Buttons and interactive elements */
+button {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.85rem;
   border: none;
-  border-radius: 0.4rem;
+  border-radius: var(--border-radius-sm);
   cursor: pointer;
-  background-color: #007bff;
-  color: #fff;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  min-width: 80px;
-  text-align: center;
+  background-color: var(--color-primary);
+  color: var(--color-bg);
+  transition: all var(--transition-speed) ease;
+  box-shadow: var(--shadow-md);
+  min-width: 60px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 var(--space-xs);
   font-weight: 500;
 }
 
-.button:hover {
-  background-color: #0056b3;
+button:hover {
+  background-color: var(--color-primary-dark);
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-lg);
 }
 
-.button:active {
+button:active {
   transform: translateY(0);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
 }
 
-.button:disabled {
-  background-color: #ccc;
+button:disabled {
+  background-color: var(--color-disabled);
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
 }
 
-.buttons button,
-.barChart-buttons button,
-#barChartButtons button,
-#buttonsContainer button {
-  all: unset; /* Reset all styles */
-  padding: 0.5rem 1rem;
-  font-size: 1rem;
-  border: none;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  background-color: #007bff;
-  color: #fff;
-  transition: background-color 0.3s ease;
+/* Clear All button hover effect */
+.clear-button:hover rect {
+  fill: #e0e0e0;
 }
 
-.buttons button:hover,
-.barChart-buttons button:hover,
-#barChartButtons button:hover,
-#buttonsContainer button:hover {
-  background-color: #0056b3;
+/* Button containers */
+#buttonsContainer, #barChartButtons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-xs);
+  margin: var(--space-xs) 0;
 }
 
-/* Initially hide bar chart buttons */
+#buttonsContainer {
+  grid-area: buttonsContainer;
+}
+
 #barChartButtons {
+  grid-area: barChartButtons;
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.3s ease, visibility 0.3s ease;
@@ -173,110 +249,24 @@ html, body {
   visibility: visible;
 }
 
-/* Bar chart container on the right */
-#barchart {
-  grid-area: barchart;
-  background-color: #fff;
-  border-radius: 0.5rem;
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
+/* Divider and utility elements */
+.container-divider {
+  height: 2px;
+  background-color: var(--color-divider);
+  margin: 0;
+  box-shadow: var(--shadow-sm);
 }
 
-/* Ensure that D3 SVG elements fill their container */
-#barchart svg,
-#linechart svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-.highlighted-sentence.selected {
-  background-color: #ffff62; 
-}
-
-/* Bar chart buttons container styling */
-.barChart-buttons {
-  grid-area: barChartButtons;
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
-}
-
-/* Loading spinner styling */
 .spinner {
   position: fixed;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   background-color: rgba(255, 255, 255, 0.9);
-  padding: 1rem 1.5rem;
-  border-radius: 0.5rem;
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--border-radius);
   box-shadow: 0 0.125rem 0.375rem rgba(0, 0, 0, 0.2);
   font-size: 1rem;
   display: none;
   z-index: 1000;
-}
-
-/* Container styles for button groups */
-#buttonsContainer,
-#barChartButtons {
-  display: flex;
-  justify-content: center;
-  gap: 0.4rem; /* Reduced gap */
-  margin: 0.25rem 0; /* Reduced margin */
-  align-items: center; /* Center buttons vertically */
-}
-
-/* Buttons container styling */
-#buttonsContainer {
-  grid-area: buttonsContainer;
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
-  margin: 1rem 0;
-}
-
-/* Container divider styling */
-.container-divider {
-  height: 2px;
-  background-color: #e0e0e0;
-  margin: 0; /* Remove margin to prevent extra space */
-  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-}
-
-/* Bottom container section takes remaining 20% */
-.bottom-container {
-  flex: 0 0 15%; /* Reduced from 20% to 15% */
-  display: grid;
-  grid-template-columns: 1fr 2fr 1fr;
-  grid-template-areas: 
-    "lineChartLegend buttonsContainer barChartButtons";
-  padding: 0.5rem; /* Reduced padding */
-  background-color: #f8f9fa;
-  min-height: 0; /* Prevent overflow */
-  max-height: 15vh; /* Ensure it doesn't grow too large */
-}
-
-/* Adjust chart containers to handle overflow properly */
-.chart-container {
-  overflow: auto;
-  height: 100%;
-}
-
-/* Updated button styles */
-.button,
-.buttons button,
-.barChart-buttons button,
-#barChartButtons button,
-#buttonsContainer button {
-  padding: 0.3rem 0.6rem; /* Reduced padding */
-  font-size: 0.85rem; /* Smaller font size */
-  min-width: 60px; /* Reduced minimum width */
-  height: 28px; /* Fixed height */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: normal; /* Ensure text is vertically centered */
-  margin: 0 0.25rem; /* Add small horizontal margin */
 }
