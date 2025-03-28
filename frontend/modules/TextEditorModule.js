@@ -28,13 +28,15 @@ export default class TextEditorModule {
    * @returns {string} - The converted HTML string.
    */
   _preserveWhitespace(text) {
+    // Remove any existing <br> tags to avoid double conversion.
+    text = text.replace(/<br\s*\/?>/gi, '\n');
     // Replace newline characters with <br> tags.
     let preservedText = text.replace(/\n/g, '<br>');
     // Replace occurrences of double spaces with a space and a non-breaking space.
-    // This will preserve multiple white spaces when rendered.
     preservedText = preservedText.replace(/ {2}/g, ' &nbsp;');
     return preservedText;
   }
+  
   
   /**
    * Render the sentences with optional highlighting.

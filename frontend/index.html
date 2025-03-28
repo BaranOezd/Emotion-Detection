@@ -20,16 +20,35 @@
         <div id="textEditor" class="text-editor" contenteditable="true">
           Type or paste your text here...
         </div>
-        <div class="buttons">
-          <button id="uploadButton">Upload File</button>
-          <button id="analyzeButton">Analyze</button>
-        </div>
       </section>
-     <!-- Bar chart container (right) -->
-    <section class="chart-container" id="barchart">
-    </section>
-    
+      <!-- Bar chart container (right) -->
+      <section class="chart-container" id="barchart">
+        <!-- Bar chart will be rendered here -->
+      </section>
     </main>
+    <div class="container-divider"></div>
+    <!-- Bottom container with legend and buttons in the same row -->
+    <div class="bottom-container">
+      <div id="lineChartLegend" class="lineChart-legend">
+        <!-- Legend will be rendered here -->
+      </div>
+      <div id="buttonsContainer" class="buttons-container">
+        <button id="uploadButton" class="button" title="Upload a text file for analysis" aria-label="Upload file">
+          Upload
+        </button>
+        <button id="analyzeButton" class="button" title="Analyze the current text" aria-label="Analyze text">
+          Analyze
+        </button>
+      </div>
+      <div id="barChartButtons" class="barChart-buttons">
+        <button id="resetButton" class="button" title="Reset emotions to original values" aria-label="Reset emotions">
+          Reset
+        </button>
+        <button id="changeSentenceButton" class="button" title="Generate new sentence with current emotions" aria-label="Change sentence">
+          Change
+        </button>
+      </div>
+    </div>
     <div id="loadingIndicator" class="spinner">Loading...</div>
     <div id="feedback" aria-live="polite"></div>
   </div>

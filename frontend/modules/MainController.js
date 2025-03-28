@@ -29,6 +29,9 @@ class MainController {
   setupEventListeners() {
     const analyzeButton = document.getElementById("analyzeButton");
     const uploadButton = document.getElementById("uploadButton");
+    const barChartButtons = document.getElementById("barChartButtons");
+    const resetButton = document.getElementById("resetButton");
+    const changeSentenceButton = document.getElementById("changeSentenceButton");
     
     analyzeButton.addEventListener("click", () => {
       const text = this.textEditorModule.getText().trim();
@@ -88,6 +91,39 @@ class MainController {
           .finally(() => this.setLoading(false));
       };
     });
+
+    // Update Reset button handler
+    resetButton.addEventListener("click", () => {
+      if (this.lastSelectedIndex !== undefined && this.data[this.lastSelectedIndex]) {
+        const sentenceData = this.data[this.lastSelectedIndex];
+        // Reset both emotions and sentence text to original state
+        sentenceData.emotions = { ...sentenceData.originalEmotions };
+        sentenceData.sentence = sentenceData.originalSentence;
+        
+        // Update data array
+        this.data[this.lastSelectedIndex] = sentenceData;
+        
+        // Update visualizations
+        this.barChartModule.render(sentenceData, {
+          onReset: this.onReset.bind(this),
+          onChangeSentence: this.handleChangeSentence.bind(this)
+        });
+        this.lineChartModule.render(this.data);
+        
+        // Re-render text with the original sentence
+        this.textEditorModule.renderSentences(this.data, this.lastSelectedIndex, (selectedIndex) => {
+          this.lastSelectedIndex = selectedIndex;
+        });
+      }
+    });
+
+    // Update Change button handler
+    changeSentenceButton.addEventListener("click", () => {
+      if (this.lastSelectedIndex !== undefined && this.data[this.lastSelectedIndex]) {
+        const sentenceData = { ...this.data[this.lastSelectedIndex] };
+        this.handleChangeSentence(sentenceData);
+      }
+    });
   }
   
   setLoading(isLoading) {
@@ -136,11 +172,18 @@ class MainController {
   } 
   
   updateSentenceList() {
+    const barChartButtons = document.getElementById("barChartButtons");
+    // Hide buttons when rendering new sentence list
+    barChartButtons.classList.remove("visible");
+    
     // Render the sentences using TextEditorModule.
     this.textEditorModule.renderSentences(this.data, null, (selectedIndex) => {
       if (selectedIndex >= 0 && selectedIndex < this.data.length) {
         const sentenceData = this.data[selectedIndex];
         sentenceData.index = selectedIndex;
+        
+        // Show buttons when a sentence is selected
+        barChartButtons.classList.add("visible");
         
         // Reset emotion values to their original state (unsaved changes discarded).
         // This ensures that if a user has played with the emotion bars and then switches sentences,

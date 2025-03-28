@@ -6,64 +6,77 @@ export default class LineChartModule {
     this.selectedEmotions = [];
   }
 
-  // Render function that creates separate sub-containers for the chart and legend.
   render(data) {
     const container = d3.select(this.containerSelector);
-    container.html("");
+    container.html(""); // Clear the chart container
 
-    // Create sub-containers: one for the chart (scrollable) and one for the legend (always visible)
-    const chartContainer = container.append("div")
-      .attr("class", "chart-container");
-    const legendContainer = container.append("div")
-      .attr("class", "legend-container");
+    // Create a wrapper div with relative positioning
+    const wrapper = container.append("div")
+      .style("position", "relative")
+      .style("height", "100%");
 
-    // Get container width (the container's height is controlled by CSS)
+    // Create the scrollable chart container
+    const chartContainer = wrapper.append("div")
+      .attr("class", "chart-container")
+      .style("position", "absolute")
+      .style("top", "0")
+      .style("left", "0")
+      .style("right", "0")
+      .style("bottom", "30px"); // Leave space for x-axis
+
+    // Create fixed container for x-axis
+    const xAxisContainer = wrapper.append("div")
+      .style("position", "absolute")
+      .style("bottom", "0")
+      .style("left", "0")
+      .style("right", "0")
+      .style("height", "30px") // Fixed height for x-axis
+      .style("background-color", "#fff");
+
     const fullWidth = container.node().clientWidth;
-    
-    // Compute natural chart height based on data (e.g., 30px per data row)
     const rowHeight = 30;
     const dynamicChartHeight = data.length * rowHeight;
-    
-    // Define margins for the chart
-    const margin = { top: 0, right: 20, bottom: 20, left: 20 };
-    const totalChartHeight = dynamicChartHeight + margin.top + margin.bottom;
+    const margin = { top: 0, right: 20, bottom: 0, left: 20 }; // bottom margin moved to container
+    const totalChartHeight = dynamicChartHeight + margin.top;
     const chartWidth = fullWidth - margin.left - margin.right;
 
-    // Create the chart SVG inside the scrollable chart container.
+    // Main chart SVG
     const chartSvg = chartContainer.append("svg")
       .attr("class", "chart-svg")
       .attr("viewBox", `0 0 ${chartWidth + margin.left + margin.right} ${totalChartHeight}`)
       .attr("preserveAspectRatio", "xMidYMid meet")
       .style("width", "100%")
-      // The SVG’s height is set naturally, which may exceed the visible area.
       .style("height", `${totalChartHeight}px`)
       .append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
 
-    // Set up scales.
+    // X-axis SVG
+    const xAxisSvg = xAxisContainer.append("svg")
+      .attr("width", "100%")
+      .attr("height", "100%")
+      .append("g")
+      .attr("transform", `translate(${margin.left},0)`);
+
     const x = d3.scaleLinear().domain([0, 1]).nice().range([chartWidth, 0]);
     const y = d3.scalePoint()
       .domain(data.map((_, i) => i + 1))
       .range([0, dynamicChartHeight])
       .padding(0);
-    const yCenter = d => y(d);
 
-    // Draw axes.
-    chartSvg.append("g")
-      .attr("transform", `translate(0, ${dynamicChartHeight})`)
+    // Add x-axis to the fixed container
+    xAxisSvg.append("g")
       .call(d3.axisBottom(x).ticks(5).tickFormat(d3.format(".1f")));
+
+    // Add y-axis to the main chart
     chartSvg.append("g")
       .attr("transform", `translate(${chartWidth}, 0)`)
       .call(d3.axisRight(y).tickFormat(d => d));
 
-    // Draw each emotion line.
     this.emotions.forEach(emotion => {
       const points = data.map((d, i) => ({
         x: x(+d.emotions[emotion] || 0),
-        y: yCenter(i + 1)
+        y: y(i + 1)
       }));
-      // Duplicate first and last points for smooth edges.
-      const augmentedPoints = [points[0], ...points, points[points.length - 1]];
 
       const line = d3.line()
         .x(d => d.x)
@@ -71,7 +84,7 @@ export default class LineChartModule {
         .curve(d3.curveBasis);
 
       chartSvg.append("path")
-        .datum(augmentedPoints)
+        .datum(points)
         .attr("class", `line-${emotion} lines`)
         .attr("fill", "none")
         .attr("stroke", this.emotionColors[emotion] || "#000")
@@ -79,8 +92,11 @@ export default class LineChartModule {
         .attr("d", line);
     });
 
-    // Create the legend SVG inside the fixed legend container.
-    const legendHeight = 80; // Fixed height for legend.
+    // Render the legend in the #lineChartLegend container
+    const legendContainer = d3.select("#lineChartLegend");
+    legendContainer.html(""); // Clear the legend container
+
+    const legendHeight = 80;
     const legendSvg = legendContainer.append("svg")
       .attr("class", "legend-svg")
       .attr("viewBox", `0 0 ${chartWidth} ${legendHeight}`)
@@ -91,35 +107,65 @@ export default class LineChartModule {
     this.drawLegend(legendSvg, chartWidth, legendHeight);
   }
 
-  // Legend drawing remains unchanged.
   drawLegend(legendSvg, chartWidth, legendHeight) {
-    const numRows = 3; // Fixed 3 rows.
-    const numCols = Math.ceil(this.emotions.length / numRows);
+    // Calculate optimal layout based on emotion count
+    const numCols = Math.min(4, this.emotions.length); // Max 4 items per row
+    const numRows = Math.ceil(this.emotions.length / numCols);
     const rowHeight = legendHeight / numRows;
-    const colSpacing = chartWidth / numCols;
-    const legendPaddingX = 10;
+    const colWidth = chartWidth / numCols;
+    const padding = { x: 20, y: 15 }; // Increased padding for better spacing
 
     const legendGroup = legendSvg.append("g")
-      .attr("transform", "translate(0,0)");
+      .attr("transform", `translate(${padding.x},${padding.y})`);
 
     this.emotions.forEach((emotion, i) => {
-      const row = i % numRows;
-      const col = Math.floor(i / numRows);
-      const x = col * colSpacing + legendPaddingX;
+      const col = i % numCols;
+      const row = Math.floor(i / numCols);
+      const x = col * colWidth;
       const y = row * rowHeight;
 
       const legendItem = legendGroup.append("g")
         .attr("transform", `translate(${x}, ${y})`)
-        .style("cursor", "pointer")
+        .style("cursor", "pointer");
+
+      // Create a background rect for hover effect
+      legendItem.append("rect")
+        .attr("class", "legend-item-bg")
+        .attr("x", -padding.x/2)
+        .attr("y", -padding.y/2)
+        .attr("width", colWidth - padding.x)
+        .attr("height", rowHeight - padding.y)
+        .attr("fill", "transparent")
+        .attr("rx", 4); // Rounded corners
+
+      // Color box
+      legendItem.append("rect")
+        .attr("width", 14)
+        .attr("height", 14)
+        .attr("fill", this.emotionColors[emotion])
+        .attr("rx", 2) // Slightly rounded corners
+        .attr("stroke", "#000")
+        .attr("stroke-width", 1);
+
+      // Emotion label
+      legendItem.append("text")
+        .attr("x", 20)
+        .attr("y", 11)
+        .style("font-size", "13px")
+        .style("font-weight", "500")
+        .text(emotion);
+
+      // Existing hover and click handlers with improved visual feedback
+      legendItem
         .on("mouseover", function() {
-          d3.select(this).select("rect")
+          d3.select(this).select(".legend-item-bg")
             .transition().duration(200)
-            .attr("opacity", 0.7);
+            .attr("fill", "rgba(0,0,0,0.05)");
         })
         .on("mouseout", function() {
-          d3.select(this).select("rect")
+          d3.select(this).select(".legend-item-bg")
             .transition().duration(200)
-            .attr("opacity", 1);
+            .attr("fill", "transparent");
         })
         .on("click", (event) => {
           // Toggle selection logic.
@@ -190,18 +236,6 @@ export default class LineChartModule {
               }.bind(this));
           }
         });
-
-      legendItem.append("rect")
-        .attr("width", 12)
-        .attr("height", 12)
-        .attr("fill", this.emotionColors[emotion])
-        .attr("stroke", "#000");
-
-      legendItem.append("text")
-        .attr("x", 16)
-        .attr("y", 10)
-        .style("font-size", "12px")
-        .text(emotion);
     });
   }
 }

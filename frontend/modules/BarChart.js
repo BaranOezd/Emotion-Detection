@@ -34,13 +34,16 @@ export default class BarChartModule {
     // Store the current index of the sentence
     const currentIndex = sentenceData.index;
   
-    // Set up margins and dimensions.
-    const margin = { top: 20, right: 20, bottom: 20, left: 20 };
+    // Dynamically calculate height based on available space
     const containerNode = barChartDiv.node();
+    const availableHeight = containerNode.clientHeight + document.getElementById("barChartButtons").offsetHeight;
+
+    // Set up margins and dimensions
+    const margin = { top: 20, right: 20, bottom: 20, left: 20 };
     const width = containerNode.clientWidth - margin.left - margin.right;
-    const height = containerNode.clientHeight - margin.top - margin.bottom;
+    const height = availableHeight - margin.top - margin.bottom;
   
-    // Append the SVG for the bar chart.
+    // Append the SVG for the bar chart
     const svg = barChartDiv.append("svg")
       .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
       .attr("preserveAspectRatio", "xMidYMid meet")
@@ -171,46 +174,5 @@ export default class BarChartModule {
       .attr("text-anchor", "start")
       .style("font-size", "12px")
       .text(d => d.emotion);
-  
-    // Create a container for the buttons under the bar chart.
-    const buttonContainer = barChartDiv.append("div")
-      .attr("class", "barChart-buttons")
-      .style("margin-top", "10px");
-  
-      buttonContainer.append("button")
-      .attr("id", "resetButton")
-      .text("Reset")
-      .style("margin-right", "10px")
-      .on("click", () => {
-        // Preserve the current index
-        const currentIndex = sentenceData.index;
-        
-        // Revert to the originally stored emotion values and sentence text.
-        sentenceData.emotions = Object.assign({}, sentenceData.originalEmotions);
-        sentenceData.sentence = sentenceData.originalSentence;
-        sentenceData.index = currentIndex;
-        
-        // Immediately re-render this chart so that the bars update.
-        this.clear();
-        this.render(sentenceData, { onReset, onChangeSentence });
-        
-        // Optionally, notify the parent controller of the reset.
-        if (onReset && typeof onReset === "function") {
-          onReset(sentenceData);
-        }
-      });
-    
-  
-    // Change Sentence button.
-    buttonContainer.append("button")
-      .attr("id", "changeSentenceButton")
-      .text("Change Sentence")
-      .on("click", () => {
-        // Ensure the index is preserved
-        sentenceData.index = currentIndex;
-        if (onChangeSentence && typeof onChangeSentence === "function") {
-          onChangeSentence(sentenceData);
-        }
-      });
   }
 }
