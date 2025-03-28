@@ -407,4 +407,60 @@ export default class LineChartModule {
         }
       });
   }
+
+  /**
+   * Scroll the line chart to show a specific sentence
+   * @param {number} index - The index of the sentence to scroll to
+   * @param {boolean} immediate - Whether to scroll without animation
+   */
+  scrollToSentence(index, immediate = false) {
+    const chartContainer = d3.select(this.containerSelector).select(".chart-container");
+    if (!chartContainer.node()) return;
+    
+    // Calculate the target scroll position (30px per row)
+    const rowHeight = 30;
+    const targetScrollTop = index * rowHeight;
+    
+    if (immediate) {
+      // Scroll immediately without animation
+      chartContainer.node().scrollTop = targetScrollTop;
+    } else {
+      // Smooth scroll with animation
+      d3.select(chartContainer.node())
+        .transition()
+        .tween("scrollToSentence", function() {
+          const node = this;
+          const startScrollTop = node.scrollTop;
+          const distance = targetScrollTop - startScrollTop;
+          return function(t) {
+            node.scrollTop = startScrollTop + (distance * t);
+          };
+        });
+    }
+  }
+  
+  /**
+   * Scroll the line chart to show a range of sentences
+   * @param {number} firstIndex - The index of the first sentence to show
+   * @param {number} lastIndex - The index of the last sentence to show
+   */
+  scrollToVisibleRange(firstIndex, lastIndex) {
+    const chartContainer = d3.select(this.containerSelector).select(".chart-container");
+    if (!chartContainer.node()) return;
+    
+    const rowHeight = 30;
+    const containerHeight = chartContainer.node().clientHeight;
+    
+    // Calculate the ideal target scroll position (center the visible range)
+    const rangeHeight = (lastIndex - firstIndex + 1) * rowHeight;
+    const targetMidpoint = (firstIndex + (lastIndex - firstIndex) / 2) * rowHeight;
+    const targetScrollTop = targetMidpoint - (containerHeight / 2) + (rowHeight / 2);
+    
+    // Ensure we don't scroll beyond content bounds
+    const maxScrollTop = chartContainer.node().scrollHeight - containerHeight;
+    const safeScrollTop = Math.max(0, Math.min(targetScrollTop, maxScrollTop));
+    
+    // Set scroll position immediately without animation
+    chartContainer.node().scrollTop = safeScrollTop;
+  }
 }

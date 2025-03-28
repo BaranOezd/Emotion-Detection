@@ -1,6 +1,7 @@
 export default class TextEditorModule {
   constructor(editorSelector) {
     this.editor = document.querySelector(editorSelector);
+    this.scrollCallbacks = [];
     if (!this.editor) {
       console.warn(`No editor found with selector: ${editorSelector}`);
       return;
@@ -20,6 +21,9 @@ export default class TextEditorModule {
     this.editor.addEventListener("input", () => {
       localStorage.setItem("savedText", this.editor.innerText);
     });
+
+    // Add scroll event listener to track scrolling
+    this.editor.addEventListener("scroll", this._handleScroll.bind(this));
   }
   
   /**
@@ -36,7 +40,6 @@ export default class TextEditorModule {
     preservedText = preservedText.replace(/ {2}/g, ' &nbsp;');
     return preservedText;
   }
-  
   
   /**
    * Render the sentences with optional highlighting.
@@ -90,5 +93,86 @@ export default class TextEditorModule {
     if (this.editor) {
       this.editor.addEventListener("input", callback);
     }
+  }
+
+  /**
+   * Handle scroll events in the text editor
+   * @private
+   */
+  _handleScroll(event) {
+    if (!this.editor || this.scrollCallbacks.length === 0) return;
+    
+    // Get all sentence elements
+    const sentences = this.editor.querySelectorAll(".highlighted-sentence");
+    if (sentences.length === 0) return;
+    
+    // Calculate which sentences are visible in the viewport
+    const editorRect = this.editor.getBoundingClientRect();
+    const visibleSentences = Array.from(sentences).filter(sentence => {
+      const sentenceRect = sentence.getBoundingClientRect();
+      // Check if the sentence is at least partially visible
+      return (
+        sentenceRect.top < editorRect.bottom &&
+        sentenceRect.bottom > editorRect.top
+      );
+    });
+    
+    // Get the index of the first and last visible sentences
+    const firstVisibleIndex = visibleSentences.length > 0
+      ? parseInt(visibleSentences[0].getAttribute("data-index"), 10)
+      : 0;
+    const lastVisibleIndex = visibleSentences.length > 0
+      ? parseInt(visibleSentences[visibleSentences.length - 1].getAttribute("data-index"), 10)
+      : 0;
+    
+    // Notify all registered callbacks
+    this.scrollCallbacks.forEach(callback => {
+      callback({
+        firstVisibleIndex,
+        lastVisibleIndex,
+        visibleCount: visibleSentences.length,
+        totalCount: sentences.length,
+        scrollTop: this.editor.scrollTop,
+        scrollHeight: this.editor.scrollHeight,
+        viewportHeight: editorRect.height
+      });
+    });
+  }
+  
+  /**
+   * Register a callback to be notified of scroll events
+   * @param {Function} callback - Function to be called when scrolling occurs
+   */
+  onScroll(callback) {
+    if (typeof callback === 'function') {
+      this.scrollCallbacks.push(callback);
+    }
+  }
+  
+  /**
+   * Get the currently visible sentence indices
+   * @returns {Object} Information about visible sentences
+   */
+  getVisibleSentences() {
+    if (!this.editor) return { firstVisibleIndex: 0, lastVisibleIndex: 0 };
+    
+    const sentences = this.editor.querySelectorAll(".highlighted-sentence");
+    if (sentences.length === 0) return { firstVisibleIndex: 0, lastVisibleIndex: 0 };
+    
+    const editorRect = this.editor.getBoundingClientRect();
+    const visibleSentences = Array.from(sentences).filter(sentence => {
+      const sentenceRect = sentence.getBoundingClientRect();
+      return (
+        sentenceRect.top < editorRect.bottom &&
+        sentenceRect.bottom > editorRect.top
+      );
+    });
+    
+    if (visibleSentences.length === 0) return { firstVisibleIndex: 0, lastVisibleIndex: 0 };
+    
+    return {
+      firstVisibleIndex: parseInt(visibleSentences[0].getAttribute("data-index"), 10),
+      lastVisibleIndex: parseInt(visibleSentences[visibleSentences.length - 1].getAttribute("data-index"), 10)
+    };
   }
 }

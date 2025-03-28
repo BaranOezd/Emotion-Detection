@@ -124,6 +124,17 @@ class MainController {
         this.handleChangeSentence(sentenceData);
       }
     });
+
+    // Connect the text editor scroll events to the line chart
+    this.textEditorModule.onScroll(scrollInfo => {
+      // Only sync scrolling when we have data and more than one visible sentence
+      if (this.data.length > 0 && scrollInfo.visibleCount > 0) {
+        this.lineChartModule.scrollToVisibleRange(
+          scrollInfo.firstVisibleIndex,
+          scrollInfo.lastVisibleIndex
+        );
+      }
+    });
   }
   
   setLoading(isLoading) {
@@ -224,6 +235,17 @@ class MainController {
         console.error("Invalid selectedIndex:", selectedIndex);
       }
     });
+
+    // Immediately sync the line chart with visible sentences - removed setTimeout
+    const visibleSentences = this.textEditorModule.getVisibleSentences();
+    if (this.data.length > 0 && 
+        visibleSentences.firstVisibleIndex !== undefined && 
+        visibleSentences.lastVisibleIndex !== undefined) {
+      this.lineChartModule.scrollToVisibleRange(
+        visibleSentences.firstVisibleIndex,
+        visibleSentences.lastVisibleIndex
+      );
+    }
   }
   
   onReset(updatedSentenceData) {
