@@ -197,6 +197,11 @@ class MainController {
         const sentenceData = this.data[selectedIndex];
         sentenceData.index = selectedIndex;
         
+        // Skip re-rendering the bar chart if the same sentence is clicked
+        if (this.lastSelectedIndex === selectedIndex) {
+          return;
+        }
+        
         // Show buttons when a sentence is selected
         barChartButtons.classList.add("visible");
         

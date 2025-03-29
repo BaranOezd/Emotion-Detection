@@ -31,16 +31,14 @@ export default class BarChartModule {
     // Set the baseline emotion values on sentenceData if not already set.
     sentenceData.originalEmotions = Object.assign({}, sentenceData.emotions);
   
-    // Store the current index of the sentence
-    const currentIndex = sentenceData.index;
-  
-    // Dynamically calculate height based on available space
+    // Dynamically calculate height and width based on available space
     const containerNode = barChartDiv.node();
-    const availableHeight = containerNode.clientHeight + document.getElementById("barChartButtons").offsetHeight;
-
+    const availableHeight = containerNode.clientHeight;
+    const availableWidth = containerNode.clientWidth;
+  
     // Set up margins and dimensions
-    const margin = { top: 20, right: 20, bottom: 20, left: 20 };
-    const width = containerNode.clientWidth - margin.left - margin.right;
+    const margin = { top: 10, right: 20, bottom: 40, left: 20 }; // Reduced top margin
+    const width = availableWidth - margin.left - margin.right;
     const height = availableHeight - margin.top - margin.bottom;
   
     // Append the SVG for the bar chart
@@ -65,18 +63,18 @@ export default class BarChartModule {
     // Define scales for a horizontal bar chart.
     const y = d3.scaleBand()
       .domain(emotions)
-      .range([0, height])
-      .padding(0.2);
+      .range([0, height]) // Use the full height for the bars
+      .padding(0.1); // Reduced padding to minimize empty space
   
     const x = d3.scaleLinear()
       .domain([0, 1])
       .nice()
       .range([0, width]);
   
-    // Append the x-axis on the top for percentage values.
+    // Append the x-axis at the bottom for percentage values.
     svg.append("g")
-      .attr("transform", `translate(0,0)`)
-      .call(d3.axisTop(x)
+      .attr("transform", `translate(0,${height})`) // Move x-axis to the bottom
+      .call(d3.axisBottom(x)
         .ticks(5)
         .tickFormat(d => `${Math.round(d * 100)}%`))
       .selectAll("text")
@@ -136,7 +134,7 @@ export default class BarChartModule {
       .attr("class", "bar")
       .attr("y", d => y(d.emotion))
       .attr("x", 0)
-      .attr("height", y.bandwidth())
+      .attr("height", y.bandwidth()) // Dynamically adjust bar height
       .attr("width", 0)  // Start at 0 width for animation
       .style("fill", d => this.emotionColors[d.emotion])
       .style("cursor", "pointer")
