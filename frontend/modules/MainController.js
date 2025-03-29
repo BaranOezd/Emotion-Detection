@@ -96,23 +96,27 @@ class MainController {
     resetButton.addEventListener("click", () => {
       if (this.lastSelectedIndex !== undefined && this.data[this.lastSelectedIndex]) {
         const sentenceData = this.data[this.lastSelectedIndex];
-        // Reset both emotions and sentence text to original state
+        // Reset emotions to their original state
         sentenceData.emotions = { ...sentenceData.originalEmotions };
-        sentenceData.sentence = sentenceData.originalSentence;
-        
-        // Update data array
-        this.data[this.lastSelectedIndex] = sentenceData;
-        
-        // Update visualizations
+
+        // Update the bar chart for the currently selected sentence
         this.barChartModule.render(sentenceData, {
           onReset: this.onReset.bind(this),
           onChangeSentence: this.handleChangeSentence.bind(this)
         });
+
+        // Update the line chart to reflect the reset values
         this.lineChartModule.render(this.data);
-        
-        // Re-render text with the original sentence
+
+        // Re-render the text editor to ensure consistency
         this.textEditorModule.renderSentences(this.data, this.lastSelectedIndex, (selectedIndex) => {
           this.lastSelectedIndex = selectedIndex;
+          const updatedSentenceData = this.data[selectedIndex];
+          updatedSentenceData.index = selectedIndex;
+          this.barChartModule.render(updatedSentenceData, {
+            onReset: this.onReset.bind(this),
+            onChangeSentence: this.handleChangeSentence.bind(this)
+          });
         });
       }
     });
