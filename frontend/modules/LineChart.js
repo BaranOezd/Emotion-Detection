@@ -448,6 +448,14 @@ export default class LineChartModule {
       .attr("rx", 5) // Rounded corners
       .attr("ry", 5);
     
+    // Highlight the y-axis tick for the selected sentence
+    this.chartSvg.selectAll(".y-axis .tick")
+      .filter(d => d === index + 1)  // Match the tick for the selected sentence
+      .select("text")
+      .attr("class", "highlighted-tick")
+      .style("font-weight", "bold")
+      .style("fill", "#2196F3")  // Blue color for highlighting 
+      
     // Ensure the highlighted sentence is visible by scrolling to it
     this.scrollToSentence(index, true);
   }
@@ -457,8 +465,17 @@ export default class LineChartModule {
    */
   clearHighlight() {
     if (!this.chartSvg) return;
+    
     // Remove highlight elements
     this.chartSvg.selectAll(".sentence-highlight").remove();
+    
+    // Reset the y-axis tick styling
+    this.chartSvg.selectAll(".y-axis .tick text")
+      .style("font-weight", "normal")
+      .style("fill", "#000")
+      .style("font-size", "10px")
+      .classed("highlighted-tick", false);
+    
     // Reset the current highlight index
     this.currentHighlightIndex = null;
   }
