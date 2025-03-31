@@ -11,7 +11,7 @@ export default class BarChartModule {
     d3.select(this.containerSelector).html("");
   }
 
-  render(sentenceData, { onReset, onChangeSentence } = {}) {
+  render(sentenceData, { onReset, onChangeSentence, skipAnimation = false } = {}) {
     const barChartDiv = d3.select(this.containerSelector);
     barChartDiv.html(""); // Clear any existing content
   
@@ -134,7 +134,7 @@ export default class BarChartModule {
         d3.select(this).style("opacity", 1);
       });
   
-    // Draw horizontal bars for each emotion with initial width set to 0.
+    // Draw horizontal bars for each emotion with initial width set to 0 or final width if skipAnimation
     const bars = svg.selectAll(".bar")
       .data(emotionScores)
       .enter().append("rect")
@@ -142,7 +142,7 @@ export default class BarChartModule {
       .attr("y", d => y(d.emotion))
       .attr("x", 0)
       .attr("height", y.bandwidth()) // Dynamically adjust bar height
-      .attr("width", 0)  // Start at 0 width for animation
+      .attr("width", skipAnimation ? d => Math.max(x(d.score), dynamicMinWidth) : 0)  // Skip animation if specified
       .style("fill", d => this.emotionColors[d.emotion])
       .style("cursor", "pointer")
       .attr("tabindex", 0)
@@ -164,10 +164,12 @@ export default class BarChartModule {
       })
       .call(drag);
   
-    // Animate the bars to their final width.
-    bars.transition()
-      .duration(500)  // Animation duration in milliseconds
-      .attr("width", d => Math.max(x(d.score), dynamicMinWidth));
+    // Only animate if not skipping animation
+    if (!skipAnimation) {
+      bars.transition()
+        .duration(500)  // Animation duration in milliseconds
+        .attr("width", d => Math.max(x(d.score), dynamicMinWidth));
+    }
   
     // Append labels to the right end of each bar showing the emotion names.
     svg.selectAll(".label")
