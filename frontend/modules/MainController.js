@@ -98,6 +98,11 @@ class MainController {
         const sentenceData = this.data[this.lastSelectedIndex];
         // Reset emotions to their original state
         sentenceData.emotions = { ...sentenceData.originalEmotions };
+        
+        // Also restore the original sentence text if available
+        if (sentenceData.originalSentence) {
+          sentenceData.sentence = sentenceData.originalSentence;
+        }
 
         // Update the bar chart for the currently selected sentence
         this.barChartModule.render(sentenceData, {
@@ -259,6 +264,12 @@ class MainController {
   
   onReset(updatedSentenceData) {
     const indexToUpdate = updatedSentenceData.index;
+    
+    // Ensure the original sentence text is also reset
+    if (this.data[indexToUpdate].originalSentence) {
+      updatedSentenceData.sentence = this.data[indexToUpdate].originalSentence;
+    }
+    
     this.data[indexToUpdate] = updatedSentenceData;
     this.lineChartModule.render(this.data);
     this.textEditorModule.renderSentences(this.data, indexToUpdate, (newIndex) => {
@@ -274,13 +285,29 @@ class MainController {
   
   handleChangeSentence(sentenceData) {
     const currentIndex = sentenceData.index;
-    this.dataService.modifySentence(sentenceData)
+    
+    // Store the original sentence if not already stored
+    if (!sentenceData.originalSentence) {
+      sentenceData.originalSentence = sentenceData.sentence;
+    }
+    
+    // Use the temporary emotion values from BarChart instead of sentenceData.emotions
+    const emotionsToSend = this.barChartModule.getCurrentEmotionValues();
+    
+    // Create a copy of sentenceData with the temporary emotion values
+    const dataToSend = {
+      ...sentenceData,
+      emotions: emotionsToSend
+    };
+    
+    this.dataService.modifySentence(dataToSend)
       .then(data => {
         if (data.error) {
           throw new Error(data.error);
         }
-        // Update the sentence with the new text.
+        // Update the data with the new values from the backend
         sentenceData.sentence = data.new_sentence;
+        sentenceData.emotions = emotionsToSend; // Update the actual emotions with the temporary values
         sentenceData.index = currentIndex;
         this.data[currentIndex] = sentenceData;
         
