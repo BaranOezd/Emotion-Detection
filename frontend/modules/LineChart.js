@@ -44,18 +44,16 @@ export default class LineChartModule {
     const chartSvg = chartContainer.append("svg")
       .attr("class", "chart-svg")
       .attr("viewBox", `0 0 ${chartWidth + margin.left + margin.right} ${totalChartHeight}`)
-      .attr("preserveAspectRatio", "xMidYMid meet") // Make the SVG responsive
+      .attr("preserveAspectRatio", "xMidYMid meet")
       .style("width", "100%")
-      .style("height", "100%") // Allow the height to scale dynamically
+      .style("height", `${totalChartHeight}px`)
       .append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
 
     // X-axis SVG
     const xAxisSvg = xAxisContainer.append("svg")
-      .attr("viewBox", `0 0 ${chartWidth + margin.left + margin.right} 30`) // Responsive x-axis
-      .attr("preserveAspectRatio", "xMidYMid meet")
-      .style("width", "100%")
-      .style("height", "100%")
+      .attr("width", "100%")
+      .attr("height", "100%")
       .append("g")
       .attr("transform", `translate(${margin.left},0)`);
 
@@ -104,10 +102,10 @@ export default class LineChartModule {
 
     const legendSvg = legendContainer.append("svg")
       .attr("class", "legend-svg")
-      .attr("viewBox", `0 0 ${chartWidth} ${legendHeight}`) // Responsive legend
-      .attr("preserveAspectRatio", "xMidYMid meet")
-      .style("width", "100%")
-      .style("height", "100%"); // Allow legend to scale dynamically
+      .attr("width", "100%")
+      .attr("height", "100%") // Fill entire container
+      .attr("viewBox", `0 0 ${chartWidth} ${legendHeight}`)
+      .attr("preserveAspectRatio", "xMidYMid meet");
 
     this.drawLegend(legendSvg, chartWidth, legendHeight);
   }
