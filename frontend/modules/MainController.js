@@ -96,6 +96,8 @@ class MainController {
     resetButton.addEventListener("click", () => {
       if (this.lastSelectedIndex !== undefined && this.data[this.lastSelectedIndex]) {
         const sentenceData = this.data[this.lastSelectedIndex];
+        const currentIndex = this.lastSelectedIndex; // Store for later use
+        
         // Reset emotions to their original state
         sentenceData.emotions = { ...sentenceData.originalEmotions };
         
@@ -107,21 +109,32 @@ class MainController {
         // Update the bar chart for the currently selected sentence
         this.barChartModule.render(sentenceData, {
           onReset: this.onReset.bind(this),
-          onChangeSentence: this.handleChangeSentence.bind(this)
+          onChangeSentence: this.handleChangeSentence.bind(this),
+          skipAnimation: true
         });
 
+        // Clear any existing highlights
+        this.lineChartModule.clearHighlight();
+        
         // Update the line chart to reflect the reset values
         this.lineChartModule.render(this.data);
+        
+        // Apply highlight after rendering and store the highlighted index
+        this.lineChartModule.highlightSentence(currentIndex);
 
         // Re-render the text editor to ensure consistency
-        this.textEditorModule.renderSentences(this.data, this.lastSelectedIndex, (selectedIndex) => {
+        this.textEditorModule.renderSentences(this.data, currentIndex, (selectedIndex) => {
           this.lastSelectedIndex = selectedIndex;
           const updatedSentenceData = this.data[selectedIndex];
           updatedSentenceData.index = selectedIndex;
           this.barChartModule.render(updatedSentenceData, {
             onReset: this.onReset.bind(this),
-            onChangeSentence: this.handleChangeSentence.bind(this)
+            onChangeSentence: this.handleChangeSentence.bind(this),
+            skipAnimation: true
           });
+          
+          // Ensure highlight is reapplied even if selectedIndex equals currentIndex
+          this.lineChartModule.highlightSentence(selectedIndex);
         });
       }
     });
@@ -183,10 +196,14 @@ class MainController {
       }
     });
 
+    // Clear any existing highlights
+    this.lineChartModule.clearHighlight();
+    
     // Update the line chart.
     this.lineChartModule.emotions = this.emotions;
     this.lineChartModule.emotionColors = this.emotionColors;
     this.lineChartModule.render(this.data);
+    
     // Ensure the bar chart uses the correct emotions list.
     this.barChartModule.emotions = this.emotions;
   } 
@@ -196,11 +213,20 @@ class MainController {
     // Hide buttons when rendering new sentence list
     barChartButtons.classList.remove("visible");
     
+    // Store a reference to the previous highlight index
+    const prevHighlightIndex = this.lineChartModule.currentHighlightIndex;
+    
+    // Clear any existing highlights before starting
+    this.lineChartModule.clearHighlight();
+    
     // Render the sentences using TextEditorModule.
     this.textEditorModule.renderSentences(this.data, null, (selectedIndex) => {
       if (selectedIndex >= 0 && selectedIndex < this.data.length) {
         const sentenceData = this.data[selectedIndex];
         sentenceData.index = selectedIndex;
+        
+        // Force highlight update regardless of whether the same sentence is clicked
+        this.lineChartModule.highlightSentence(selectedIndex);
         
         // Skip re-rendering the bar chart if the same sentence is clicked
         if (this.lastSelectedIndex === selectedIndex) {
@@ -211,8 +237,6 @@ class MainController {
         barChartButtons.classList.add("visible");
         
         // Reset emotion values to their original state (unsaved changes discarded).
-        // This ensures that if a user has played with the emotion bars and then switches sentences,
-        // the selected sentence will display the emotions as they originally were.
         if (sentenceData.originalEmotions) {
           sentenceData.emotions = Object.assign({}, sentenceData.originalEmotions);
         } else {
@@ -224,29 +248,18 @@ class MainController {
         
         // Render the bar chart for the selected sentence.
         this.barChartModule.render(sentenceData, {
-          onReset: (updatedSentenceData) => {
-            // Update the data array with the reset sentence data.
-            const indexToUpdate = updatedSentenceData.index;
-            this.data[indexToUpdate] = updatedSentenceData;
-            
-            // Re-render the line chart.
-            this.lineChartModule.render(this.data);
-            
-            // Re-render the sentences while preserving the selected index.
-            this.textEditorModule.renderSentences(this.data, indexToUpdate, (newIndex) => {
-              this.lastSelectedIndex = newIndex;
-              const newSentenceData = this.data[newIndex];
-              newSentenceData.index = newIndex;
-              this.barChartModule.render(newSentenceData, {
-                onReset: this.onReset.bind(this),
-                onChangeSentence: this.handleChangeSentence.bind(this)
-              });
-            });
-          },
-          onChangeSentence: this.handleChangeSentence.bind(this)
+          onReset: this.onReset.bind(this),
+          onChangeSentence: this.handleChangeSentence.bind(this),
+          skipAnimation: false // Always animate when switching between sentences
         });
       } else {
         console.error("Invalid selectedIndex:", selectedIndex);
+        
+        // If no valid selection but we had a previous highlight, restore it
+        if (prevHighlightIndex !== null && prevHighlightIndex >= 0 && 
+            prevHighlightIndex < this.data.length) {
+          this.lineChartModule.highlightSentence(prevHighlightIndex);
+        }
       }
     });
 
@@ -271,14 +284,25 @@ class MainController {
     }
     
     this.data[indexToUpdate] = updatedSentenceData;
+    
+    // Clear highlight first
+    this.lineChartModule.clearHighlight();
+    
+    // Re-render the line chart
     this.lineChartModule.render(this.data);
+    
+    // Re-apply highlight and store the highlighted index
+    this.lineChartModule.highlightSentence(indexToUpdate);
+    this.lineChartModule.currentHighlightIndex = indexToUpdate;
+    
     this.textEditorModule.renderSentences(this.data, indexToUpdate, (newIndex) => {
       this.lastSelectedIndex = newIndex;
       const newSentenceData = this.data[newIndex];
       newSentenceData.index = newIndex;
       this.barChartModule.render(newSentenceData, {
         onReset: this.onReset.bind(this),
-        onChangeSentence: this.handleChangeSentence.bind(this)
+        onChangeSentence: this.handleChangeSentence.bind(this),
+        skipAnimation: true // Skip animation when resetting the same sentence
       });
     });
   }
@@ -311,19 +335,30 @@ class MainController {
         sentenceData.index = currentIndex;
         this.data[currentIndex] = sentenceData;
         
+        // Clear existing highlight
+        this.lineChartModule.clearHighlight();
+        
+        // Update the line chart with new data
+        this.lineChartModule.render(this.data);
+        
+        // Make sure to re-highlight the current sentence
+        this.lineChartModule.highlightSentence(currentIndex);
+        
         // Re-render the sentence list with the same sentence selected.
         this.textEditorModule.renderSentences(this.data, currentIndex, (selectedIndex) => {
           this.lastSelectedIndex = selectedIndex;
+          
           const selectedSentence = this.data[selectedIndex];
           selectedSentence.index = selectedIndex;
           this.barChartModule.render(selectedSentence, {
             onReset: this.onReset.bind(this),
-            onChangeSentence: this.handleChangeSentence.bind(this)
+            onChangeSentence: this.handleChangeSentence.bind(this),
+            skipAnimation: true // Skip animation when re-rendering after change
           });
+          
+          // Make sure highlight is applied after text editor rendering
+          this.lineChartModule.highlightSentence(selectedIndex);
         });
-        
-        // Update the line chart.
-        this.lineChartModule.render(this.data);
       })
       .catch(error => {
         console.error("Error modifying sentence:", error);

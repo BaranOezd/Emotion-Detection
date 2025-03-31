@@ -4,6 +4,7 @@ export default class LineChartModule {
     this.emotions = emotions;
     this.emotionColors = emotionColors;
     this.selectedEmotions = [];
+    this.currentHighlightIndex = null; // Add property to track currently highlighted sentence
   }
 
   render(data) {
@@ -69,6 +70,7 @@ export default class LineChartModule {
 
     // Add y-axis to the main chart
     chartSvg.append("g")
+      .attr("class", "y-axis")
       .attr("transform", `translate(${chartWidth}, 0)`)
       .call(d3.axisRight(y).tickFormat(d => d));
 
@@ -108,6 +110,17 @@ export default class LineChartModule {
       .attr("preserveAspectRatio", "xMidYMid meet");
 
     this.drawLegend(legendSvg, chartWidth, legendHeight);
+
+    // Store references to important elements for later use
+    this.chartSvg = chartSvg;
+    this.x = x;
+    this.y = y;
+    this.data = data;
+    
+    // If there was a highlighted sentence, restore it after re-rendering
+    if (this.currentHighlightIndex !== null && this.currentHighlightIndex < data.length) {
+      this.highlightSentence(this.currentHighlightIndex);
+    }
   }
 
   drawLegend(legendSvg, chartWidth, legendHeight) {
@@ -409,6 +422,48 @@ export default class LineChartModule {
   }
 
   /**
+   * Highlight a specific sentence in the line chart
+   * @param {number} index - The index of the sentence to highlight
+   */
+  highlightSentence(index) {
+    if (!this.chartSvg || !this.data || index < 0 || index >= this.data.length) return;
+    
+    // Force clear any existing highlights first
+    this.clearHighlight();
+    
+    // Store the current highlight index explicitly
+    this.currentHighlightIndex = index;
+    
+    // Calculate the y-position for the highlight
+    const yPos = this.y(index + 1);
+    
+    // Add a highlight rectangle across the chart width
+    this.chartSvg.append("rect")
+      .attr("class", "sentence-highlight")
+      .attr("x", 0)
+      .attr("y", yPos - 15) // Position slightly above the line to make it centered
+      .attr("width", this.chartSvg.node().getBBox().width - 20) // Full width minus some padding
+      .attr("height", 30) // Fixed height for highlight bar
+      .attr("fill", "rgba(80, 80, 80, 0.2)") // Semi-transparent gray
+      .attr("rx", 5) // Rounded corners
+      .attr("ry", 5);
+    
+    // Ensure the highlighted sentence is visible by scrolling to it
+    this.scrollToSentence(index, true);
+  }
+
+  /**
+   * Clear any sentence highlighting
+   */
+  clearHighlight() {
+    if (!this.chartSvg) return;
+    // Remove highlight elements
+    this.chartSvg.selectAll(".sentence-highlight").remove();
+    // Reset the current highlight index
+    this.currentHighlightIndex = null;
+  }
+
+  /**
    * Scroll the line chart to show a specific sentence
    * @param {number} index - The index of the sentence to scroll to
    * @param {boolean} immediate - Whether to scroll without animation
@@ -417,21 +472,32 @@ export default class LineChartModule {
     const chartContainer = d3.select(this.containerSelector).select(".chart-container");
     if (!chartContainer.node()) return;
     
-    // Calculate the target scroll position (30px per row)
+    // Calculate the container's visible height
+    const containerHeight = chartContainer.node().clientHeight;
+    
+    // Calculate the target scroll position to center the sentence in the view
     const rowHeight = 30;
-    const targetScrollTop = index * rowHeight;
+    const sentencePosition = index * rowHeight;
+    
+    // Position the sentence in the middle of the visible area
+    const targetScrollTop = sentencePosition - (containerHeight / 2) + (rowHeight / 2);
+    
+    // Ensure we don't scroll beyond content bounds
+    const maxScrollTop = chartContainer.node().scrollHeight - containerHeight;
+    const safeScrollTop = Math.max(0, Math.min(targetScrollTop, maxScrollTop));
     
     if (immediate) {
       // Scroll immediately without animation
-      chartContainer.node().scrollTop = targetScrollTop;
+      chartContainer.node().scrollTop = safeScrollTop;
     } else {
       // Smooth scroll with animation
       d3.select(chartContainer.node())
         .transition()
+        .duration(500)
         .tween("scrollToSentence", function() {
           const node = this;
           const startScrollTop = node.scrollTop;
-          const distance = targetScrollTop - startScrollTop;
+          const distance = safeScrollTop - startScrollTop;
           return function(t) {
             node.scrollTop = startScrollTop + (distance * t);
           };
