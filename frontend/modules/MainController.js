@@ -246,7 +246,7 @@ class MainController {
         // Store the currently selected index.
         this.lastSelectedIndex = selectedIndex;
         
-        // Render the bar chart for the selected sentence.
+        // Explicitly set skipAnimation to false to ensure animation when switching sentences
         this.barChartModule.render(sentenceData, {
           onReset: this.onReset.bind(this),
           onChangeSentence: this.handleChangeSentence.bind(this),
@@ -350,10 +350,14 @@ class MainController {
           
           const selectedSentence = this.data[selectedIndex];
           selectedSentence.index = selectedIndex;
+          
+          // Use skipAnimation true ONLY when it's the same sentence after a change
+          const skipAnimation = selectedIndex === currentIndex;
+          
           this.barChartModule.render(selectedSentence, {
             onReset: this.onReset.bind(this),
             onChangeSentence: this.handleChangeSentence.bind(this),
-            skipAnimation: true // Skip animation when re-rendering after change
+            skipAnimation: skipAnimation
           });
           
           // Make sure highlight is applied after text editor rendering
