@@ -35,13 +35,35 @@ export default class LineChartModule {
       .style("background-color", "#fff");
 
     const fullWidth = container.node().clientWidth;
-    const rowHeight = 30;
-    const dynamicChartHeight = data.length * rowHeight;
-    const margin = { top: 0, right: 20, bottom: 0, left: 20 }; // bottom margin moved to container
-    const totalChartHeight = dynamicChartHeight + margin.top;
+    const availableHeight = container.node().clientHeight - 30; // Subtract x-axis height
+    const margin = { top: 0, right: 20, bottom: 0, left: 20 };
     const chartWidth = fullWidth - margin.left - margin.right;
 
-    // Main chart SVG
+    // Calculate dynamic row height to better utilize available space
+    const minRowHeight = 30; // Minimum height per row
+    const maxRowHeight = 120; // Maximum height per row - increased to allow for significant expansion
+    let rowHeight = minRowHeight;
+    
+    // Always try to fill at least 90% of the available height
+    const targetHeight = Math.max(300, availableHeight * 0.9);
+    
+    if (data.length > 0) {
+      // Calculate row height to fill the target height
+      rowHeight = Math.min(maxRowHeight, targetHeight / data.length);
+      // Ensure row height is at least the minimum
+      rowHeight = Math.max(minRowHeight, rowHeight);
+      
+      console.log(`LineChart: ${data.length} sentences, rowHeight=${rowHeight}px, availableHeight=${availableHeight}px`);
+    }
+    
+    // Calculate total chart height based on row height and data length
+    const dynamicChartHeight = data.length > 0 
+      ? data.length * rowHeight 
+      : Math.max(300, availableHeight); // Default height if no data
+    
+    const totalChartHeight = dynamicChartHeight + margin.top;
+
+    // Main chart SVG with responsive attributes
     const chartSvg = chartContainer.append("svg")
       .attr("class", "chart-svg")
       .attr("viewBox", `0 0 ${chartWidth + margin.left + margin.right} ${totalChartHeight}`)
@@ -59,10 +81,12 @@ export default class LineChartModule {
       .attr("transform", `translate(${margin.left},0)`);
 
     const x = d3.scaleLinear().domain([0, 1]).nice().range([chartWidth, 0]);
+    
+    // Create a dynamic y scale based on data length
     const y = d3.scalePoint()
-      .domain(data.map((_, i) => i + 1))
+      .domain(data.length > 0 ? data.map((_, i) => i + 1) : [1]) // Handle empty data
       .range([0, dynamicChartHeight])
-      .padding(0);
+      .padding(0.1); // Add some padding to prevent lines touching container edges
 
     // Add x-axis to the fixed container
     xAxisSvg.append("g")
@@ -74,25 +98,36 @@ export default class LineChartModule {
       .attr("transform", `translate(${chartWidth}, 0)`)
       .call(d3.axisRight(y).tickFormat(d => d));
 
-    this.emotions.forEach(emotion => {
-      const points = data.map((d, i) => ({
-        x: x(+d.emotions[emotion] || 0),
-        y: y(i + 1)
-      }));
+    // Check if we have data before trying to draw emotion lines
+    if (data.length > 0) {
+      this.emotions.forEach(emotion => {
+        const points = data.map((d, i) => ({
+          x: x(+d.emotions[emotion] || 0),
+          y: y(i + 1)
+        }));
 
-      const line = d3.line()
-        .x(d => d.x)
-        .y(d => d.y)
-        .curve(d3.curveBasis);
+        const line = d3.line()
+          .x(d => d.x)
+          .y(d => d.y)
+          .curve(d3.curveBasis);
 
-      chartSvg.append("path")
-        .datum(points)
-        .attr("class", `line-${emotion} lines`)
-        .attr("fill", "none")
-        .attr("stroke", this.emotionColors[emotion] || "#000")
-        .attr("stroke-width", 4)
-        .attr("d", line);
-    });
+        chartSvg.append("path")
+          .datum(points)
+          .attr("class", `line-${emotion} lines`)
+          .attr("fill", "none")
+          .attr("stroke", this.emotionColors[emotion] || "#000")
+          .attr("stroke-width", 4)
+          .attr("d", line);
+      });
+    } else {
+      // If no data, show a message
+      chartSvg.append("text")
+        .attr("x", chartWidth / 2)
+        .attr("y", dynamicChartHeight / 2)
+        .attr("text-anchor", "middle")
+        .style("font-size", "14px")
+        .text("No data available");
+    }
 
     // Render the legend in the #lineChartLegend container
     const legendContainer = d3.select("#lineChartLegend");
@@ -116,11 +151,70 @@ export default class LineChartModule {
     this.x = x;
     this.y = y;
     this.data = data;
+    this.chartHeight = dynamicChartHeight;
+    this.rowHeight = rowHeight; // Store calculated row height for scrolling calculations
     
     // If there was a highlighted sentence, restore it after re-rendering
     if (this.currentHighlightIndex !== null && this.currentHighlightIndex < data.length) {
       this.highlightSentence(this.currentHighlightIndex);
     }
+    
+    // Add resize handler to ensure chart fills available space
+    this._setupResizeHandler(chartContainer, chartSvg, totalChartHeight, wrapper);
+  }
+
+  _setupResizeHandler(chartContainer, chartSvg, initialHeight, wrapper) {
+    // Clean up any previous resize observer
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+    }
+    
+    // Create a new resize observer to handle container size changes
+    this.resizeObserver = new ResizeObserver(entries => {
+      for (let entry of entries) {
+        const containerHeight = entry.contentRect.height;
+        const containerWidth = entry.contentRect.width;
+        
+        // Only update if container dimensions have changed significantly
+        if (Math.abs(containerHeight - this._lastContainerHeight) > 10 ||
+            Math.abs(containerWidth - this._lastContainerWidth) > 10) {
+          
+          // Store new dimensions
+          this._lastContainerHeight = containerHeight;
+          this._lastContainerWidth = containerWidth;
+          
+          // Calculate new height that uses the full available space
+          const newHeight = Math.max(initialHeight, containerHeight);
+          
+          // Update the SVG parent's height to fill the available space
+          // Fix: Access the SVG element correctly (chartSvg is a group inside SVG)
+          const svgElement = chartSvg.node().parentNode; // Get the SVG element
+          if (svgElement) {
+            d3.select(svgElement) // Create a D3 selection from the SVG element
+              .style("height", `${newHeight}px`)
+              .attr("height", newHeight);
+          }
+
+          // If we have few data points, trigger a complete re-render to better use the space
+          if (this.data && this.data.length > 0 && this.data.length < 10 && 
+              containerHeight > initialHeight + 50) { // Only re-render if significant height change
+            // Use setTimeout to avoid multiple rapid re-renders
+            clearTimeout(this._resizeTimer);
+            this._resizeTimer = setTimeout(() => {
+              console.log("LineChart: Container resize triggered re-render");
+              this.render(this.data);
+            }, 300);
+          }
+        }
+      }
+    });
+    
+    // Store initial dimensions
+    this._lastContainerHeight = chartContainer.node().clientHeight;
+    this._lastContainerWidth = chartContainer.node().clientWidth;
+    
+    // Start observing the container
+    this.resizeObserver.observe(wrapper.node());
   }
 
   drawLegend(legendSvg, chartWidth, legendHeight) {
@@ -492,12 +586,11 @@ export default class LineChartModule {
     // Calculate the container's visible height
     const containerHeight = chartContainer.node().clientHeight;
     
-    // Calculate the target scroll position to center the sentence in the view
-    const rowHeight = 30;
-    const sentencePosition = index * rowHeight;
+    // Use the stored row height for more accurate scrolling
+    const sentencePosition = index * this.rowHeight;
     
     // Position the sentence in the middle of the visible area
-    const targetScrollTop = sentencePosition - (containerHeight / 2) + (rowHeight / 2);
+    const targetScrollTop = sentencePosition - (containerHeight / 2) + (this.rowHeight / 2);
     
     // Ensure we don't scroll beyond content bounds
     const maxScrollTop = chartContainer.node().scrollHeight - containerHeight;
@@ -531,13 +624,13 @@ export default class LineChartModule {
     const chartContainer = d3.select(this.containerSelector).select(".chart-container");
     if (!chartContainer.node()) return;
     
-    const rowHeight = 30;
+    // Use the stored row height for more accurate scrolling
     const containerHeight = chartContainer.node().clientHeight;
     
     // Calculate the ideal target scroll position (center the visible range)
-    const rangeHeight = (lastIndex - firstIndex + 1) * rowHeight;
-    const targetMidpoint = (firstIndex + (lastIndex - firstIndex) / 2) * rowHeight;
-    const targetScrollTop = targetMidpoint - (containerHeight / 2) + (rowHeight / 2);
+    const rangeHeight = (lastIndex - firstIndex + 1) * this.rowHeight;
+    const targetMidpoint = (firstIndex + (lastIndex - firstIndex) / 2) * this.rowHeight;
+    const targetScrollTop = targetMidpoint - (containerHeight / 2) + (this.rowHeight / 2);
     
     // Ensure we don't scroll beyond content bounds
     const maxScrollTop = chartContainer.node().scrollHeight - containerHeight;
