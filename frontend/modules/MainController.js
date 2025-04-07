@@ -11,13 +11,34 @@ class MainController {
     this.emotions = [];
     this.currentSelectedIndex = -1;
     this.emotionColors = {
-      joy: "#FFEB3B",
-      sadness: "#2196F3",
-      fear: "#9C27B0",
-      disgust: "#4CAF50",
-      anger: "#F44336",
-      surprise: "#FFB322",
-      neutral: "#9E9E9E",
+      admiration: "#FFD700", // Gold for admiration (associated with respect and honor)
+      amusement: "#FF69B4", // Hot pink for amusement (playful and fun)
+      anger: "#FF0000", // Red for anger (universally associated with intensity and rage)
+      annoyance: "#FFA07A", // Light salmon for annoyance (mild irritation)
+      approval: "#32CD32", // Lime green for approval (positive and affirming)
+      caring: "#FFB6C1", // Light pink for caring (gentle and nurturing)
+      confusion: "#6A5ACD", // Slate blue for confusion (uncertainty and thoughtfulness)
+      curiosity: "#4682B4", // Steel blue for curiosity (calm exploration)
+      desire: "#FF4500", // Orange-red for desire (passion and longing)
+      disappointment: "#708090", // Slate gray for disappointment (subdued and somber)
+      disapproval: "#8B0000", // Dark red for disapproval (strong rejection)
+      disgust: "#008000", // Green for disgust (associated with sickness or aversion)
+      embarrassment: "#FF6347", // Tomato for embarrassment (blushing and awkwardness)
+      excitement: "#FFA500", // Orange for excitement (energy and enthusiasm)
+      fear: "#800080", // Purple for fear (mystery and unease)
+      gratitude: "#8A2BE2", // Blue violet for gratitude (deep appreciation)
+      grief: "#2F4F4F", // Dark slate gray for grief (mourning and sadness)
+      joy: "#FFFF00", // Yellow for joy (happiness and brightness)
+      love: "#FF1493", // Deep pink for love (romantic and affectionate)
+      nervousness: "#A52A2A", // Brown for nervousness (unease and tension)
+      neutral: "#808080", // Gray for neutral (balance and neutrality)
+      optimism: "#FFDAB9", // Peach puff for optimism (hopeful and warm)
+      pride: "#DAA520", // Goldenrod for pride (achievement and confidence)
+      realization: "#87CEEB", // Sky blue for realization (clarity and understanding)
+      relief: "#98FB98", // Pale green for relief (calm and soothing)
+      remorse: "#8B4513", // Saddle brown for remorse (regret and guilt)
+      sadness: "#0000FF", // Blue for sadness (melancholy and calm)
+      surprise: "#FFC0CB" // Pink for surprise (unexpected and lighthearted)
     };
     // Initialize the visualization modules.
     this.barChartModule = new BarChartModule("#barchart", this.emotionColors, this.emotions);
@@ -177,7 +198,7 @@ class MainController {
   
   updateEmotions() {
     if (this.data.length > 0) {
-      this.emotions = Object.keys(this.data[0].emotions);
+      this.emotions = Object.keys(this.data[0].emotions); // Dynamically update emotions
     } else {
       this.emotions = [];
     }

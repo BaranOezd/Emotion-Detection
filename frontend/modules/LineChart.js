@@ -111,13 +111,50 @@ export default class LineChartModule {
           .y(d => d.y)
           .curve(d3.curveBasis);
 
-        chartSvg.append("path")
+        const path = chartSvg.append("path")
           .datum(points)
           .attr("class", `line-${emotion} lines`)
           .attr("fill", "none")
-          .attr("stroke", this.emotionColors[emotion] || "#000")
+          .attr("stroke", this.emotionColors[emotion] || "#000") // Use the updated emotion colors
           .attr("stroke-width", 4)
           .attr("d", line);
+
+        // Add hover functionality to display the emotion name
+        path.on("mouseover", function (event) {
+          // Ensure any existing tooltip is removed before creating a new one
+          d3.select(".line-tooltip").remove();
+
+          const tooltip = d3.select("body").append("div")
+            .attr("class", "line-tooltip")
+            .style("position", "absolute")
+            .style("background", "#fff")
+            .style("border", "1px solid #ccc")
+            .style("border-radius", "4px")
+            .style("padding", "5px")
+            .style("pointer-events", "none")
+            .style("font-size", "12px")
+            .style("opacity", 0);
+
+          tooltip.html(emotion)
+            .style("left", (event.pageX + 10) + "px")
+            .style("top", (event.pageY - 20) + "px")
+            .transition()
+            .duration(200)
+            .style("opacity", 0.9);
+        })
+        .on("mousemove", function (event) {
+          d3.select(".line-tooltip")
+            .style("left", (event.pageX + 10) + "px")
+            .style("top", (event.pageY - 20) + "px");
+        })
+        .on("mouseout", function () {
+          // Properly remove the tooltip on mouseout
+          d3.select(".line-tooltip")
+            .transition()
+            .duration(200)
+            .style("opacity", 0)
+            .remove();
+        });
       });
     } else {
       // If no data, show a message
@@ -219,300 +256,79 @@ export default class LineChartModule {
 
   drawLegend(legendSvg, chartWidth, legendHeight) {
     const padding = { x: 15, y: 10 };
-    const availableWidth = chartWidth - (padding.x * 2);
     const emotionColors = this.emotionColors;
     const self = this;
-    
-    const legendGroup = legendSvg.append("g")
-      .attr("transform", `translate(${padding.x},${padding.y})`);
-    
-    // Add legend title/instructions with smaller font
-    legendGroup.append("text")
-      .attr("x", availableWidth / 2)
-      .attr("y", -2)
-      .attr("text-anchor", "middle")
-      .style("font-size", "8px")
-      .style("font-weight", "bold")
-      .text("Click to filter • Shift+Click for multiple");
-    
-    // Calculate item dimensions
-    const itemHeight = 18;
-    const itemPadding = 6;
-    const minItemWidth = 80; // Minimum width for each legend item
-    
-    // Calculate item sizes and positions using a flexbox-like wrapping approach
-    const legendItems = [];
-    let rowX = 0;
-    let rowY = 5; // Starting Y position (after the title)
-    let maxRowHeight = 0;
-    
-    // First pass: calculate text widths and create item objects
+
+    // Clear any existing legend content
+    legendSvg.html("");
+
+    // Create a scrollable container for the legend
+    const legendContainer = d3.select("#lineChartLegend")
+      .style("overflow-y", "auto") // Enable vertical scrolling
+      .style("max-height", "150px") // Limit the height of the legend
+      .style("display", "grid") // Use grid layout for items
+      .style("grid-template-columns", "repeat(auto-fit, minmax(120px, 1fr))") // Responsive grid
+      .style("gap", "10px") // Add spacing between items
+      .style("padding", "10px"); // Add padding inside the container
+
+    // Add legend items for each emotion
     this.emotions.forEach(emotion => {
-      // Measure the text width
-      const tempText = legendGroup.append("text")
-        .style("font-size", "10px") // Even smaller font
-        .style("visibility", "hidden")
-        .text(emotion);
-      const textWidth = tempText.node().getComputedTextLength();
-      tempText.remove();
-      
-      // Calculate full item width (color box + spacing + text + padding)
-      const itemWidth = Math.max(minItemWidth, textWidth + 30); // 10px box + 5px spacing + 15px right padding
-      
-      // Check if this item will fit on the current row
-      if (rowX + itemWidth > availableWidth && rowX > 0) {
-        // Move to the next row
-        rowY += maxRowHeight + itemPadding;
-        rowX = 0;
-        maxRowHeight = 0;
-      }
-      
-      // Add the item to our layout data
-      legendItems.push({
-        emotion,
-        x: rowX,
-        y: rowY,
-        width: itemWidth,
-        height: itemHeight
-      });
-      
-      // Update position for the next item
-      rowX += itemWidth + itemPadding;
-      maxRowHeight = Math.max(maxRowHeight, itemHeight);
-    });
-    
-    // Create tooltip div if it doesn't exist
-    let tooltip = d3.select("body").select(".legend-tooltip");
-    if (tooltip.empty()) {
-      tooltip = d3.select("body").append("div")
-        .attr("class", "legend-tooltip")
-        .style("position", "absolute")
-        .style("background", "rgba(0,0,0,0.7)")
-        .style("color", "white")
-        .style("padding", "5px 8px")
-        .style("border-radius", "4px")
-        .style("font-size", "12px")
-        .style("pointer-events", "none")
-        .style("opacity", 0)
-        .style("z-index", 1000);
-    }
-    
-    // Add "Clear All" button in bottom right corner
-    const clearButton = legendGroup.append("g")
-      .attr("class", "clear-button")
-      .attr("transform", `translate(${availableWidth - 40}, ${legendHeight - 18})`)
-      .style("cursor", "pointer")
-      .style("opacity", 0.7);
-    
-    clearButton.append("rect")
-      .attr("rx", 3)
-      .attr("width", 40)
-      .attr("height", 14)
-      .attr("fill", "#f0f0f0")
-      .attr("stroke", "#ccc");
-      
-    clearButton.append("text")
-      .attr("x", 20)
-      .attr("y", 10)
-      .attr("text-anchor", "middle")
-      .style("font-size", "8px")
-      .text("Clear All");
-    
-    clearButton.on("click", () => {
-      self.selectedEmotions = [];
-      legendGroup.selectAll("[data-emotion] rect:not(.legend-item-bg)")
-        .transition().duration(300)
-        .attr("stroke-width", 1)
-        .attr("transform", "scale(1)");
-      legendGroup.selectAll("[data-emotion] text")
-        .transition().duration(300)
-        .style("font-weight", "500");
-      
-      d3.selectAll(".lines")
-        .transition().duration(500)
-        .style("opacity", 1);
-    })
-    .on("mouseover", function() {
-      d3.select(this).style("opacity", 1);
-    })
-    .on("mouseout", function() {
-      d3.select(this).style("opacity", 0.7);
-    });
-    
-    // Second pass: render all legend items
-    legendItems.forEach(item => {
-      createLegendItem(item.emotion, item.x, item.y, item.width, item.height);
-    });
-    
-    // Helper function to create a legend item
-    function createLegendItem(emotion, x, y, width, height) {
-      const legendItem = legendGroup.append("g")
-        .attr("transform", `translate(${x}, ${y})`)
+      const legendItem = legendContainer.append("div")
+        .attr("class", "legend-item")
+        .style("display", "flex")
+        .style("align-items", "center")
         .style("cursor", "pointer")
         .attr("data-emotion", emotion);
-      
-      // Background for hover effect
-      legendItem.append("rect")
-        .attr("class", "legend-item-bg")
-        .attr("x", 0)
-        .attr("y", 0)
-        .attr("width", width)
-        .attr("height", height)
-        .attr("fill", "transparent")
-        .attr("rx", 3);
-      
-      // Color box
-      legendItem.append("rect")
-        .attr("width", 10) // Even smaller
-        .attr("height", 10)
-        .attr("x", 5)
-        .attr("y", (height - 10) / 2) // Center vertically
-        .attr("fill", emotionColors[emotion])
-        .attr("rx", 1)
-        .attr("stroke", "#000")
-        .attr("stroke-width", 0.5);
-      
-      // Emotion label with non-selectable text
-      legendItem.append("text")
-        .attr("x", 20) // Position after color box
-        .attr("y", height / 2 + 3) // Center vertically
-        .style("font-size", "10px") // Even smaller font
+
+      // Add color box
+      legendItem.append("div")
+        .style("width", "15px")
+        .style("height", "15px")
+        .style("background-color", emotionColors[emotion])
+        .style("border", "1px solid #000")
+        .style("margin-right", "8px");
+
+      // Add emotion label
+      legendItem.append("span")
+        .style("font-size", "12px")
         .style("font-weight", "500")
-        .style("pointer-events", "none") // Prevent text from capturing mouse events
         .text(emotion);
-    }
-    
-    // Add enhanced event handlers to all legend items
-    legendGroup.selectAll("[data-emotion]")
-      .on("mouseover", function(event) {
-        const emotion = d3.select(this).attr("data-emotion");
-        
-        // Highlight background
-        d3.select(this).select(".legend-item-bg")
-          .transition().duration(200)
-          .attr("fill", "rgba(0,0,0,0.05)");
-        
-        // Show tooltip with instructions
-        const isSelected = self.selectedEmotions.includes(emotion);
-        let tooltipText = isSelected ? 
-          `Click to remove "${emotion}" filter` : 
-          `Click to show only "${emotion}" data`;
-        
-        if (self.selectedEmotions.length > 0 && !isSelected) {
-          tooltipText += ' • Shift+Click to add to filter';
-        }
-        
-        tooltip.html(tooltipText)
-          .style("left", (event.pageX + 10) + "px")
-          .style("top", (event.pageY - 25) + "px")
-          .transition().duration(200)
-          .style("opacity", 0.9);
-        
-        // Highlight the corresponding line
-        if (self.selectedEmotions.length === 0) {
-          d3.selectAll(`.line-${emotion}`)
-            .transition().duration(200)
-            .attr("stroke-width", 6);
-        }
-      })
-      .on("mousemove", function(event) {
-        tooltip.style("left", (event.pageX + 10) + "px")
-          .style("top", (event.pageY - 25) + "px");
-      })
-      .on("mouseout", function() {
-        d3.select(this).select(".legend-item-bg")
-          .transition().duration(200)
-          .attr("fill", "transparent");
-        
-        tooltip.transition().duration(200)
-          .style("opacity", 0);
-        
-        // Restore line thickness
-        const emotion = d3.select(this).attr("data-emotion");
-        if (self.selectedEmotions.length === 0) {
-          d3.selectAll(`.line-${emotion}`)
-            .transition().duration(200)
-            .attr("stroke-width", 4);
-        }
-      })
-      .on("click", function(event) {
-        const clickedItem = d3.select(this);
-        const emotionText = clickedItem.attr("data-emotion");
-        
-        // Hide tooltip after click
-        tooltip.transition().duration(200)
-          .style("opacity", 0);
-        
-        // Toggle selection logic
+
+      // Add click event for filtering
+      legendItem.on("click", function (event) {
+        const clickedEmotion = d3.select(this).attr("data-emotion");
+
         if (event.shiftKey) {
-          if (self.selectedEmotions.includes(emotionText)) {
-            self.selectedEmotions = self.selectedEmotions.filter(e => e !== emotionText);
-            clickedItem.select("rect:not(.legend-item-bg)")
-              .transition().duration(300)
-              .attr("stroke-width", 1)
-              .attr("transform", "scale(1)");
-            clickedItem.select("text")
-              .transition().duration(300)
-              .style("font-weight", "500");
+          // Shift+Click: Add or remove the emotion from the selected list
+          if (self.selectedEmotions.includes(clickedEmotion)) {
+            self.selectedEmotions = self.selectedEmotions.filter(e => e !== clickedEmotion);
           } else {
-            self.selectedEmotions.push(emotionText);
-            clickedItem.select("rect:not(.legend-item-bg)")
-              .transition().duration(300)
-              .attr("stroke-width", 2)
-              .attr("transform", "scale(1.1)");
-            clickedItem.select("text")
-              .transition().duration(300)
-              .style("font-weight", "bold");
+            self.selectedEmotions.push(clickedEmotion);
           }
         } else {
-          if (self.selectedEmotions.length === 1 && self.selectedEmotions[0] === emotionText) {
-            self.selectedEmotions = [];
-            legendGroup.selectAll("[data-emotion] rect:not(.legend-item-bg)")
-              .transition().duration(300)
-              .attr("stroke-width", 1)
-              .attr("transform", "scale(1)");
-            legendGroup.selectAll("[data-emotion] text")
-              .transition().duration(300)
-              .style("font-weight", "500");
+          // Regular Click: Toggle between showing only the clicked emotion or all emotions
+          if (self.selectedEmotions.length === 1 && self.selectedEmotions[0] === clickedEmotion) {
+            self.selectedEmotions = []; // Deselect all if the same emotion is clicked again
           } else {
-            legendGroup.selectAll("[data-emotion] rect:not(.legend-item-bg)")
-              .transition().duration(300)
-              .attr("stroke-width", 1)
-              .attr("transform", "scale(1)");
-            legendGroup.selectAll("[data-emotion] text")
-              .transition().duration(300)
-              .style("font-weight", "500");
-            
-            self.selectedEmotions = [emotionText];
-            clickedItem.select("rect:not(.legend-item-bg)")
-              .transition().duration(300)
-              .attr("stroke-width", 2)
-              .attr("transform", "scale(1.1)");
-            clickedItem.select("text")
-              .transition().duration(300)
-              .style("font-weight", "bold");
+            self.selectedEmotions = [clickedEmotion]; // Show only the clicked emotion
           }
         }
 
+        // Update legend item opacity
+        legendContainer.selectAll(".legend-item").each(function () {
+          const emotion = d3.select(this).attr("data-emotion");
+          d3.select(this).style("opacity", self.selectedEmotions.length === 0 || self.selectedEmotions.includes(emotion) ? 1 : 0.5);
+        });
+
         // Update line visibility based on selection
-        if (self.selectedEmotions.length === 0) {
-          d3.selectAll(".lines")
-            .transition().duration(500)
-            .style("opacity", 1);
-        } else {
-          d3.selectAll(".lines")
-            .transition().duration(500)
-            .style("opacity", function() {
-              const classes = d3.select(this).attr("class").split(" ");
-              for (let sel of self.selectedEmotions) {
-                if (classes.indexOf(`line-${sel}`) !== -1) {
-                  return 1;
-                }
-              }
-              return 0.1;
-            });
-        }
+        d3.selectAll(".lines")
+          .transition().duration(500)
+          .style("opacity", function () {
+            const classes = d3.select(this).attr("class").split(" ");
+            return self.selectedEmotions.length === 0 || self.selectedEmotions.some(sel => classes.includes(`line-${sel}`)) ? 1 : 0.1;
+          });
       });
+    });
   }
 
   /**
