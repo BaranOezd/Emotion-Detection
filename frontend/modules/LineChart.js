@@ -69,7 +69,7 @@ export default class LineChartModule {
       .attr("viewBox", `0 0 ${chartWidth + margin.left + margin.right} ${totalChartHeight}`)
       .attr("preserveAspectRatio", "xMidYMid meet")
       .style("width", "100%")
-      .style("height", `${totalChartHeight}px`)
+      .style("height", "100%") // Make height responsive
       .append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
 
@@ -80,7 +80,7 @@ export default class LineChartModule {
       .append("g")
       .attr("transform", `translate(${margin.left},0)`);
 
-    const x = d3.scaleLinear().domain([0, 1]).nice().range([chartWidth, 0]);
+    const x = d3.scaleLinear().domain([0, 1]).nice().range([0, chartWidth]); // Adjust range to start from 0
     
     // Create a dynamic y scale based on data length
     const y = d3.scalePoint()
@@ -95,8 +95,8 @@ export default class LineChartModule {
     // Add y-axis to the main chart
     chartSvg.append("g")
       .attr("class", "y-axis")
-      .attr("transform", `translate(${chartWidth}, 0)`)
-      .call(d3.axisRight(y).tickFormat(d => d));
+      .attr("transform", `translate(0, 0)`) // Align y-axis with the 0 point of x-axis
+      .call(d3.axisLeft(y).tickFormat(d => d));
 
     // Check if we have data before trying to draw emotion lines
     if (data.length > 0) {
@@ -198,6 +198,15 @@ export default class LineChartModule {
     
     // Add resize handler to ensure chart fills available space
     this._setupResizeHandler(chartContainer, chartSvg, totalChartHeight, wrapper);
+
+    // Ensure the chart container's scroll event works with the existing synchronization logic
+    chartContainer.on("scroll", () => {
+      const scrollTop = chartContainer.node().scrollTop;
+      const visibleRange = this.getVisibleRange(scrollTop, chartContainer.node().clientHeight);
+      if (this.onScrollCallback) {
+        this.onScrollCallback(visibleRange);
+      }
+    });
   }
 
   _setupResizeHandler(chartContainer, chartSvg, initialHeight, wrapper) {
@@ -454,5 +463,16 @@ export default class LineChartModule {
     
     // Set scroll position immediately without animation
     chartContainer.node().scrollTop = safeScrollTop;
+  }
+
+  getVisibleRange(scrollTop, containerHeight) {
+    // Calculate the first and last visible indices based on scroll position and container height
+    const firstVisibleIndex = Math.floor(scrollTop / this.rowHeight);
+    const lastVisibleIndex = Math.min(
+        Math.ceil((scrollTop + containerHeight) / this.rowHeight) - 1,
+        this.data.length - 1
+    );
+
+    return { firstVisibleIndex, lastVisibleIndex };
   }
 }
