@@ -73,24 +73,114 @@ export default class LineChartModule {
       .append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
 
-    // X-axis SVG
+    // X-axis SVG - ensure exact same transformation as main chart for horizontal alignment
     const xAxisSvg = xAxisContainer.append("svg")
       .attr("width", "100%")
       .attr("height", "100%")
       .append("g")
       .attr("transform", `translate(${margin.left},0)`);
 
-    const x = d3.scaleLinear().domain([0, 1]).nice().range([0, chartWidth]); // Adjust range to start from 0
+    // Create a linear scale with exact domain values and no rounding
+    const x = d3.scaleLinear()
+      .domain([0, 1])
+      .range([0, chartWidth]);
     
     // Create a dynamic y scale based on data length
     const y = d3.scalePoint()
       .domain(data.length > 0 ? data.map((_, i) => i + 1) : [1]) // Handle empty data
       .range([0, dynamicChartHeight])
-      .padding(0.1); // Add some padding to prevent lines touching container edges
+      .padding(0.); // Maximum padding to create extremely wide gaps between rows
 
-    // Add x-axis to the fixed container
-    xAxisSvg.append("g")
-      .call(d3.axisBottom(x).ticks(5).tickFormat(d3.format(".1f")));
+    // Define exact percentage values for ticks (use same values for both grid and axis)
+    const xTickValues = [0, 0.2, 0.4, 0.6, 0.8, 1.0];
+    
+    // For debugging: Store these calculated positions in instance variables
+    this.debugTickPositions = xTickValues.map(d => ({
+      value: d,
+      pixelPos: Math.round(x(d))  // Round to integer pixels for perfect alignment
+    }));
+    
+    // UNIFIED APPROACH: Create both grid lines and axis in a single group
+    // This ensures they share exactly the same coordinate space
+    const combinedAxisGroup = chartSvg.append("g")
+      .attr("class", "combined-axis-group");
+    
+    // 1. Add the horizontal axis line - make it more visible
+    combinedAxisGroup.append("line")
+      .attr("class", "axis-baseline")
+      .attr("x1", 0)
+      .attr("x2", chartWidth)
+      .attr("y1", dynamicChartHeight) // Position at bottom of chart
+      .attr("y2", dynamicChartHeight)
+      .attr("stroke", "black")
+      .attr("stroke-width", 1.5); // Make the line slightly thicker
+    
+    // 2. Create tick marks and grid lines together
+    this.debugTickPositions.forEach(tick => {
+      // Create a group for each tick position
+      const tickGroup = combinedAxisGroup.append("g")
+        .attr("class", "tick-group")
+        .attr("transform", `translate(${tick.pixelPos}, 0)`);
+      
+      // Add the vertical grid line from top to bottom
+      tickGroup.append("line")
+        .attr("class", "grid-line")
+        .attr("x1", 0)
+        .attr("x2", 0)
+        .attr("y1", 0)
+        .attr("y2", dynamicChartHeight)
+        .attr("stroke", "#e0e0e0")
+        .attr("stroke-dasharray", "3,3")
+        .attr("stroke-width", 1);
+      
+      // Add the tick mark at the bottom
+      tickGroup.append("line")
+        .attr("class", "tick-line")
+        .attr("x1", 0)
+        .attr("x2", 0)
+        .attr("y1", dynamicChartHeight)
+        .attr("y2", dynamicChartHeight + 4) // Slightly shorter ticks
+        .attr("stroke", "black");
+      
+      // Add the tick label 
+      tickGroup.append("text")
+        .attr("class", "tick-label")
+        .attr("x", 0)
+        .attr("y", dynamicChartHeight + 9)
+        .attr("dy", "0.71em")
+        .attr("text-anchor", "middle")
+        .style("font-size", "11px") 
+        .text(`${Math.round(tick.value * 100)}%`);
+    });
+    
+    // Now the x-axis container only needs to show the labels by cloning them
+    // Create a mirrored version of the axis labels in the bottom container with smaller font
+    const xAxisLabels = xAxisSvg.append("g")
+      .attr("class", "x-axis-labels")
+      .attr("transform", `translate(0, 0)`);
+      
+    // Add a horizontal line at the top of the x-axis container for better separation
+    xAxisLabels.append("line")
+      .attr("x1", 0)
+      .attr("x2", chartWidth)
+      .attr("y1", 0)
+      .attr("y2", 0)
+      .attr("stroke", "#000")
+      .attr("stroke-width", 1);
+      
+    this.debugTickPositions.forEach(tick => {
+      xAxisLabels.append("text")
+        .attr("class", "tick-label-mirror")
+        .attr("x", tick.pixelPos)
+        .attr("y", 9)
+        .attr("dy", "0.71em")
+        .attr("text-anchor", "middle")
+        .style("font-size", "11px") // Increased from 9px to 11px
+        .text(`${Math.round(tick.value * 100)}%`);
+    });
+
+    // Hide the original ticks to avoid duplication
+    combinedAxisGroup.selectAll(".tick-label").style("opacity", 0);
 
     // Add y-axis to the main chart
     chartSvg.append("g")
@@ -106,22 +196,25 @@ export default class LineChartModule {
           y: y(i + 1)
         }));
 
+        // Use a more reliable curve that balances accuracy and aesthetics
         const line = d3.line()
           .x(d => d.x)
           .y(d => d.y)
-          .curve(d3.curveBasis);
+          .curve(d3.curveMonotoneY); // Reliable curve that preserves data points
 
+        // Create a single clean line with appropriate thickness
         const path = chartSvg.append("path")
           .datum(points)
           .attr("class", `line-${emotion} lines`)
           .attr("fill", "none")
-          .attr("stroke", this.emotionColors[emotion] || "#000") // Use the updated emotion colors
-          .attr("stroke-width", 4)
+          .attr("stroke", this.emotionColors[emotion] || "#000")
+          .attr("stroke-width", 4) // Increased line thickness for better visibility
           .attr("d", line);
 
         // Add hover functionality to display the emotion name
         path.on("mouseover", function (event) {
           // Ensure any existing tooltip is removed before creating a new one
+
           d3.select(".line-tooltip").remove();
 
           const tooltip = d3.select("body").append("div")
@@ -359,13 +452,13 @@ export default class LineChartModule {
     // Add a highlight rectangle across the chart width
     this.chartSvg.append("rect")
       .attr("class", "sentence-highlight")
-      .attr("x", 0)
-      .attr("y", yPos - 15) // Position slightly above the line to make it centered
-      .attr("width", this.chartSvg.node().getBBox().width - 20) // Full width minus some padding
-      .attr("height", 30) // Fixed height for highlight bar
+      .attr("x", 0)  // Start from the left edge of the transformed coordinate system
+      .attr("y", yPos - 20) // Increased vertical offset for the wider spacing
+      .attr("width", this.x.range()[1]) // Use the exact width from the x scale range
+      .attr("height", 40) // Increased height for highlight bar
       .attr("fill", "rgba(80, 80, 80, 0.2)") // Semi-transparent gray
-      .attr("rx", 5) // Rounded corners
-      .attr("ry", 5);
+      .attr("rx", 6) // Slightly increased rounded corners
+      .attr("ry", 6);
     
     // Highlight the y-axis tick for the selected sentence
     this.chartSvg.selectAll(".y-axis .tick")
@@ -373,7 +466,7 @@ export default class LineChartModule {
       .select("text")
       .attr("class", "highlighted-tick")
       .style("font-weight", "bold")
-      .style("fill", "#2196F3")  // Blue color for highlighting 
+      .style("fill", "#2196F3");  // Blue color for highlighting 
       
     // Ensure the highlighted sentence is visible by scrolling to it
     this.scrollToSentence(index, true);
