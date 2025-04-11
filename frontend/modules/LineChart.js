@@ -468,8 +468,94 @@ export default class LineChartModule {
       .style("font-weight", "bold")
       .style("fill", "#2196F3");  // Blue color for highlighting 
       
-    // Ensure the highlighted sentence is visible by scrolling to it
-    this.scrollToSentence(index, true);
+    // Check if the highlighted sentence is already visible in the current view
+    // If not, scroll to make it visible but with smarter positioning
+    this.scrollToSentenceIfNeeded(index);
+  }
+
+  /**
+   * Scrolls to the sentence only if it's not already fully visible in the view
+   * @param {number} index - The index of the sentence to check and potentially scroll to
+   */
+  scrollToSentenceIfNeeded(index) {
+    const chartContainer = d3.select(this.containerSelector).select(".chart-container");
+    if (!chartContainer.node()) return;
+    
+    // Get the current scroll position and viewport height
+    const scrollTop = chartContainer.node().scrollTop;
+    const viewportHeight = chartContainer.node().clientHeight;
+    
+    // Calculate the position of the target sentence
+    const sentencePosition = index * this.rowHeight;
+    
+    // Determine if the sentence is already fully visible
+    const isBelowViewport = sentencePosition > (scrollTop + viewportHeight - this.rowHeight);
+    const isAboveViewport = sentencePosition < scrollTop;
+    
+    if (!isBelowViewport && !isAboveViewport) {
+      // If sentence is already visible, don't scroll
+      return;
+    }
+    
+    // Determine scroll position based on where the sentence is relative to viewport
+    let targetScrollTop;
+    
+    if (isBelowViewport) {
+      // If sentence is below, position it 1/3 from the bottom of the viewport
+      targetScrollTop = sentencePosition - viewportHeight + this.rowHeight + (viewportHeight / 3);
+    } else {
+      // If sentence is above, position it 1/3 from the top of the viewport
+      targetScrollTop = sentencePosition - (viewportHeight / 3);
+    }
+    
+    // Ensure we don't scroll beyond content bounds
+    const maxScrollTop = chartContainer.node().scrollHeight - viewportHeight;
+    const safeScrollTop = Math.max(0, Math.min(targetScrollTop, maxScrollTop));
+    
+    // Smooth scroll with animation
+    d3.select(chartContainer.node())
+      .transition()
+      .duration(300) // Faster transition for less disruption
+      .ease(d3.easeCubicOut) // Smoother easing
+      .tween("scrollToSentence", function() {
+        const node = this;
+        const startScrollTop = node.scrollTop;
+        const distance = safeScrollTop - startScrollTop;
+        return function(t) {
+          node.scrollTop = startScrollTop + (distance * t);
+        };
+      });
+  }
+
+  /**
+   * Scroll the line chart to show a specific sentence
+   * This method is kept for backward compatibility but modified to use the new approach
+   * @param {number} index - The index of the sentence to scroll to
+   * @param {boolean} immediate - Whether to scroll without animation
+   */
+  scrollToSentence(index, immediate = false) {
+    // If immediate is true, we still use the centered approach for consistency with existing calls
+    if (immediate) {
+      const chartContainer = d3.select(this.containerSelector).select(".chart-container");
+      if (!chartContainer.node()) return;
+      
+      // Calculate the container's visible height
+      const containerHeight = chartContainer.node().clientHeight;
+      
+      // Position the sentence in the middle of the visible area
+      const sentencePosition = index * this.rowHeight;
+      const targetScrollTop = sentencePosition - (containerHeight / 2) + (this.rowHeight / 2);
+      
+      // Ensure we don't scroll beyond content bounds
+      const maxScrollTop = chartContainer.node().scrollHeight - containerHeight;
+      const safeScrollTop = Math.max(0, Math.min(targetScrollTop, maxScrollTop));
+      
+      // Scroll immediately without animation
+      chartContainer.node().scrollTop = safeScrollTop;
+    } else {
+      // Use the new smarter scrolling for non-immediate scrolls
+      this.scrollToSentenceIfNeeded(index);
+    }
   }
 
   /**
@@ -492,47 +578,6 @@ export default class LineChartModule {
     this.currentHighlightIndex = null;
   }
 
-  /**
-   * Scroll the line chart to show a specific sentence
-   * @param {number} index - The index of the sentence to scroll to
-   * @param {boolean} immediate - Whether to scroll without animation
-   */
-  scrollToSentence(index, immediate = false) {
-    const chartContainer = d3.select(this.containerSelector).select(".chart-container");
-    if (!chartContainer.node()) return;
-    
-    // Calculate the container's visible height
-    const containerHeight = chartContainer.node().clientHeight;
-    
-    // Use the stored row height for more accurate scrolling
-    const sentencePosition = index * this.rowHeight;
-    
-    // Position the sentence in the middle of the visible area
-    const targetScrollTop = sentencePosition - (containerHeight / 2) + (this.rowHeight / 2);
-    
-    // Ensure we don't scroll beyond content bounds
-    const maxScrollTop = chartContainer.node().scrollHeight - containerHeight;
-    const safeScrollTop = Math.max(0, Math.min(targetScrollTop, maxScrollTop));
-    
-    if (immediate) {
-      // Scroll immediately without animation
-      chartContainer.node().scrollTop = safeScrollTop;
-    } else {
-      // Smooth scroll with animation
-      d3.select(chartContainer.node())
-        .transition()
-        .duration(500)
-        .tween("scrollToSentence", function() {
-          const node = this;
-          const startScrollTop = node.scrollTop;
-          const distance = safeScrollTop - startScrollTop;
-          return function(t) {
-            node.scrollTop = startScrollTop + (distance * t);
-          };
-        });
-    }
-  }
-  
   /**
    * Scroll the line chart to show a range of sentences
    * @param {number} firstIndex - The index of the first sentence to show
