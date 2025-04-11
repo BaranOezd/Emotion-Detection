@@ -44,7 +44,87 @@ class MainController {
     this.barChartModule = new BarChartModule("#barchart", this.emotionColors, this.emotions);
     this.lineChartModule = new LineChartModule("#linechart", this.emotions, this.emotionColors);
     
+    // Register the sentence selection callback with the LineChart
+    this.lineChartModule.onSentenceSelect((index) => {
+      this.handleLineChartSentenceSelection(index);
+    });
+    
     this.setupEventListeners();
+  }
+  
+  /**
+   * Handle sentence selection from the LineChart
+   * @param {number} index - The index of the selected sentence
+   */
+  handleLineChartSentenceSelection(index) {
+    if (index >= 0 && index < this.data.length) {
+      // Show the bar chart buttons when a sentence is selected
+      const barChartButtons = document.getElementById("barChartButtons");
+      barChartButtons.classList.add("visible");
+      
+      // Find the text editor element and its sentences
+      const textEditor = document.querySelector("#textEditor");
+      if (textEditor) {
+        const sentences = textEditor.querySelectorAll(".highlighted-sentence");
+        
+        if (sentences.length > 0 && sentences[index]) {
+          // First check if the sentence is visible in the viewport
+          const sentenceElement = sentences[index];
+          const editorRect = textEditor.getBoundingClientRect();
+          const sentenceRect = sentenceElement.getBoundingClientRect();
+          
+          // Check if the sentence is visible within the text editor's viewport
+          const isVisible = (
+            sentenceRect.top >= editorRect.top && 
+            sentenceRect.bottom <= editorRect.bottom
+          );
+          
+          // If the sentence is not visible, scroll it into view first
+          if (!isVisible) {
+            // Temporarily disable text editor scroll syncing to prevent line chart rescrolling
+            this._disableScrollSync = true;
+            
+            // Calculate position to scroll to
+            // We want the sentence to be positioned 1/3 from the top of the viewport
+            const targetPosition = sentenceElement.offsetTop - (editorRect.height / 3);
+            
+            // Use direct scrolling for better performance
+            textEditor.scrollTop = targetPosition;
+            
+            // Click immediately without waiting
+            sentenceElement.click();
+            
+            // Re-enable text editor scroll syncing after a short delay
+            setTimeout(() => {
+              this._disableScrollSync = false;
+            }, 500);
+          } else {
+            // If already visible, just click it
+            sentenceElement.click();
+          }
+          return;
+        }
+      }
+      
+      // If no corresponding text editor sentence was found, update directly
+      this.lastSelectedIndex = index;
+      const sentenceData = this.data[index];
+      if (sentenceData) {
+        sentenceData.index = index;
+        
+        // Reset emotion values to their original state
+        if (sentenceData.originalEmotions) {
+          sentenceData.emotions = Object.assign({}, sentenceData.originalEmotions);
+        }
+        
+        // Render the bar chart with the selected sentence data
+        this.barChartModule.render(sentenceData, {
+          onReset: this.onReset.bind(this),
+          onChangeSentence: this.handleChangeSentence.bind(this),
+          skipAnimation: false
+        });
+      }
+    }
   }
   
   setupEventListeners() {
@@ -170,6 +250,9 @@ class MainController {
 
     // Connect the text editor scroll events to the line chart
     this.textEditorModule.onScroll(scrollInfo => {
+      // Skip scroll sync if temporarily disabled
+      if (this._disableScrollSync) return;
+      
       // Only sync scrolling when we have data and more than one visible sentence
       if (this.data.length > 0 && scrollInfo.visibleCount > 0) {
         this.lineChartModule.scrollToVisibleRange(
@@ -246,7 +329,7 @@ class MainController {
         const sentenceData = this.data[selectedIndex];
         sentenceData.index = selectedIndex;
         
-        // Force highlight update regardless of whether the same sentence is clicked
+        // Force highlight update in the line chart when a sentence is selected in the text editor
         this.lineChartModule.highlightSentence(selectedIndex);
         
         // Skip re-rendering the bar chart if the same sentence is clicked

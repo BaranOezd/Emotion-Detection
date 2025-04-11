@@ -190,6 +190,9 @@ export default class LineChartModule {
 
     // Check if we have data before trying to draw emotion lines
     if (data.length > 0) {
+      // Add bidirectional highlighting - add this before drawing emotion lines
+      this.addSentenceInteractionAreas(chartSvg, data, x, y, dynamicChartHeight, rowHeight);
+      
       this.emotions.forEach(emotion => {
         const points = data.map((d, i) => ({
           x: x(+d.emotions[emotion] || 0),
@@ -612,5 +615,130 @@ export default class LineChartModule {
     );
 
     return { firstVisibleIndex, lastVisibleIndex };
+  }
+
+  /**
+   * Adds interactive areas for each sentence in the chart
+   */
+  addSentenceInteractionAreas(chartSvg, data, x, y, chartHeight, rowHeight) {
+    const self = this;
+    
+    // Remove any existing interaction areas first
+    chartSvg.selectAll(".sentence-hit-area").remove();
+    
+    // Create interactive rectangles for each sentence row
+    const hitAreas = chartSvg.append("g")
+      .attr("class", "sentence-interaction-areas");
+    
+    data.forEach((d, i) => {
+      hitAreas.append("rect")
+        .attr("class", "sentence-hit-area")
+        .attr("x", 0)
+        .attr("y", y(i + 1) - rowHeight/2)
+        .attr("width", x.range()[1])
+        .attr("height", rowHeight)
+        .attr("fill", "transparent")
+        .style("cursor", "pointer")
+        .on("click", function(event) {
+          // Prevent event propagation
+          event.stopPropagation();
+          
+          // Clear any existing highlights first
+          self.clearHighlight();
+          
+          // Highlight this sentence in the chart
+          self.highlightSentence(i);
+          
+          // Check if we have a valid callback and call it
+          if (typeof self.onSentenceSelectCallback === 'function') {
+            // Log successful callback invocation
+            self.onSentenceSelectCallback(i);
+          } else {
+            // If no callback is registered, attempt to auto-register with MainController
+            console.warn('LineChart: No sentence selection callback registered.');
+            self._attemptAutoRegistration(i);
+          }
+        })
+        .on("mouseover", function() {
+          // Add subtle hover effect
+          d3.select(this).attr("fill", "rgba(0,0,0,0.05)");
+        })
+        .on("mouseout", function() {
+          // Remove hover effect
+          d3.select(this).attr("fill", "transparent");
+        });
+    });
+  }
+
+  /**
+   * Attempt to automatically find and use an appropriate callback in the MainController
+   * @private
+   * @param {number} index - The index of the selected sentence
+   */
+  _attemptAutoRegistration(index) {
+    try {
+      // Try to find the text editor and trigger a sentence selection
+      const textEditor = document.querySelector("#textEditor");
+      if (textEditor) {
+        const sentences = textEditor.querySelectorAll(".highlighted-sentence");
+        if (sentences.length > 0 && sentences[index]) {
+          console.log("LineChart: Auto-triggering sentence selection in text editor");
+          sentences[index].click();
+          return true;
+        }
+      }
+      return false;
+    } catch (error) {
+      console.error("LineChart: Auto-registration failed", error);
+      return false;
+    }
+  }
+
+  /**
+   * Register a callback to be called when a sentence is selected in the chart
+   * This method ensures the callback is properly set
+   * @param {Function} callback - Function to call with the selected sentence index
+   * @returns {boolean} - Whether the callback was successfully registered
+   */
+  onSentenceSelect(callback) {
+    if (typeof callback !== 'function') {
+      console.error('LineChart: onSentenceSelect requires a function parameter');
+      return false;
+    }
+    
+    this.onSentenceSelectCallback = callback;
+    console.log('LineChart: Sentence selection callback registered successfully');
+    return true;
+  }
+
+  /**
+   * Initialize the chart with data and all required callbacks
+   * @param {Array} data - The emotion data to render
+   * @param {Function} sentenceSelectCallback - Optional callback for sentence selection
+   */
+  initialize(data, sentenceSelectCallback) {
+    // Register the sentence selection callback if provided
+    if (typeof sentenceSelectCallback === 'function') {
+      this.onSentenceSelect(sentenceSelectCallback);
+    }
+    
+    // Render the chart with the provided data
+    this.render(data);
+  }
+
+  /**
+   * Register a callback to be called when a sentence is selected in the chart
+   * @param {Function} callback - Function to call with the selected sentence index
+   */
+  onSentenceSelect(callback) {
+    this.onSentenceSelectCallback = callback;
+  }
+
+  /**
+   * Register a callback to be called when the chart is scrolled
+   * @param {Function} callback - Function to call with the visible range
+   */
+  onScroll(callback) {
+    this.onScrollCallback = callback;
   }
 }
