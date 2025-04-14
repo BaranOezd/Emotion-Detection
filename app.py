@@ -9,7 +9,7 @@ app = Flask(__name__, template_folder='./frontend', static_folder='./frontend')
 
 # Instantiate the analyzer and sentence generator.
 analyzer = EmotionsAnalyzer()
-sentence_generator = SentenceGenerator(max_attempts=100, emotion_threshold=0.07, analyzer=analyzer)
+sentence_generator = SentenceGenerator(max_attempts=3, emotion_threshold=0.07, analyzer=analyzer)
 
 # Route for the main HTML page.
 @app.route('/')
