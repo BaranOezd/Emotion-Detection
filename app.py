@@ -9,8 +9,7 @@ app = Flask(__name__, template_folder='./frontend', static_folder='./frontend')
 
 # Instantiate the analyzer and sentence generator.
 analyzer = EmotionsAnalyzer()
-# Initialize with parameters for the feedback loop with higher max_attempts
-sentence_generator = SentenceGenerator(max_attempts=15, emotion_threshold=0.07)
+sentence_generator = SentenceGenerator(max_attempts=100, emotion_threshold=0.07, analyzer=analyzer)
 
 # Route for the main HTML page.
 @app.route('/')
@@ -55,10 +54,24 @@ def modify_sentence():
             return jsonify({"error": "Sentence and new_emotions must be provided"}), 400
 
         print("/modify endpoint triggered")
-        # The generator returns a plain string. Wrap it in a JSON object.
+        # Generate the modified sentence
         new_sentence = sentence_generator.generate_modified_sentence(original_sentence, new_emotion_levels, context_text)
+        
+        # Analyze the emotions of the generated sentence
+        actual_emotions = analyzer.analyze_emotions(new_sentence)
+        
+        # Normalize the top 3 actual emotions to two decimal places
+        top_actual_emotions = dict(sorted(actual_emotions.items(), key=lambda x: x[1], reverse=True)[:3])
+        normalized_top_actual_emotions = {k: round(v, 2) for k, v in top_actual_emotions.items()}
+        
         print("Sentence modification complete:", new_sentence)
-        return jsonify({"new_sentence": new_sentence})
+        print("Top 3 actual emotions (normalized):", normalized_top_actual_emotions)
+        
+        # Return the new sentence and its emotion levels
+        return jsonify({
+            "new_sentence": new_sentence,
+            "emotion_levels": normalized_top_actual_emotions
+        })
     except Exception as e:
         print(f"Error during sentence modification: {e}")
         print(traceback.format_exc())

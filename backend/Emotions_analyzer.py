@@ -81,3 +81,17 @@ class EmotionsAnalyzer:
         sentences = [sent.text for sent in doc.sents]
         return sentences
 
+    def analyze_emotions_batch(self, sentences):
+        """
+        Analyze emotions for multiple sentences at once
+        :param sentences: List of sentences to analyze
+        :return: List of emotion dictionaries
+        """
+        if not sentences:
+            return []
+        
+        results = []
+        for sentence in sentences:
+            results.append(self.analyze_emotions(sentence))
+        return results
+
