@@ -20,27 +20,22 @@ if not api_key:
 openai.api_key = api_key
 
 class SentenceGenerator:
-    def __init__(self, model_name="gpt-4o-mini", max_tokens=100, max_attempts=3, emotion_threshold=0.05, analyzer=None):
+    def __init__(self, model_name="gpt-4o-mini", max_tokens=100, analyzer=None):
         """
         Initialize the generator with the specified OpenAI model.
         :param model_name: The name of the OpenAI model to use.
         :param max_tokens: Maximum tokens for the generated response.
-        :param max_attempts: Maximum number of attempts to generate a matching sentence.
-        :param emotion_threshold: Maximum acceptable difference between intended and actual emotions.
         :param analyzer: An instance of EmotionsAnalyzer for emotion analysis.
         """
         self.model_name = model_name
         self.max_tokens = max_tokens
         self.max_attempts = 3  # Fixed maximum attempts
-        self.rmse_target = 0.12  # More realistic target for emotion matching
-        self.emotion_threshold = 0.15  # Accounts for natural variation in emotion detection
-        # Use the provided analyzer or create a new one
+        self.rmse_target = 0.12  # Target for acceptable emotion match
+        self.emotion_threshold = 0.15  # Threshold for individual emotion matches
         self.analyzer = analyzer if analyzer else EmotionsAnalyzer(model_name="SamLowe/roberta-base-go_emotions")
-        self.batch_size = 50  # Increased batch size (√2500 = 50)
-        self.keep_best = 7    # Adjusted to log2(50) * 1.5 ≈ 7 for optimal diversity with larger batch
-        self.perfect_match_threshold = 0.12  # Aligned with RMSE target
-        self.early_stop_threshold = 0.15  # More realistic early stop condition
-
+        self.batch_size = 50  # Number of sentences per batch
+        self.keep_best = 7    # Number of best sentences to keep
+        
         # Set up logging
         self.log_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs")
         os.makedirs(self.log_dir, exist_ok=True)

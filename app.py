@@ -4,12 +4,16 @@ from flask import Flask, render_template, send_from_directory, request, jsonify
 from backend.Emotions_analyzer import EmotionsAnalyzer
 from backend.emotion_sentence_generator import SentenceGenerator
 
-# Initialize Flask app with frontend templates and static files.
+# Initialize Flask app
 app = Flask(__name__, template_folder='./frontend', static_folder='./frontend')
 
-# Instantiate the analyzer and sentence generator.
+# Initialize analyzer and sentence generator with optimized parameters
 analyzer = EmotionsAnalyzer()
-sentence_generator = SentenceGenerator(max_attempts=3, emotion_threshold=0.07, analyzer=analyzer)
+sentence_generator = SentenceGenerator(
+    model_name="gpt-4o-mini",
+    max_tokens=100,
+    analyzer=analyzer
+)
 
 # Route for the main HTML page.
 @app.route('/')
