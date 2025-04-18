@@ -31,14 +31,15 @@ class SentenceGenerator:
         """
         self.model_name = model_name
         self.max_tokens = max_tokens
-        self.max_attempts = 3  # Force max_attempts to 3 batches
-        self.emotion_threshold = 0.05  # Threshold for top 3 emotions
+        self.max_attempts = 3  # Fixed maximum attempts
+        self.rmse_target = 0.12  # More realistic target for emotion matching
+        self.emotion_threshold = 0.15  # Accounts for natural variation in emotion detection
         # Use the provided analyzer or create a new one
         self.analyzer = analyzer if analyzer else EmotionsAnalyzer(model_name="SamLowe/roberta-base-go_emotions")
-        self.batch_size = 15  # Total sentences per batch
-        self.keep_best = 3   # Keep only top 3 sentences for next batch
-        self.perfect_match_threshold = 0.05  # Add threshold for perfect matches
-        self.early_stop_threshold = 0.1  # More lenient threshold for early stopping
+        self.batch_size = 50  # Increased batch size (√2500 = 50)
+        self.keep_best = 7    # Adjusted to log2(50) * 1.5 ≈ 7 for optimal diversity with larger batch
+        self.perfect_match_threshold = 0.12  # Aligned with RMSE target
+        self.early_stop_threshold = 0.15  # More realistic early stop condition
 
         # Set up logging
         self.log_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs")
@@ -110,9 +111,11 @@ class SentenceGenerator:
         overall_best_emotions = None
         overall_best_score = float('inf')
         
-        for attempt in range(self.max_attempts):
+        attempt = 0
+        while True:
             batch_start = time.time()
-            self._log(f"\nBatch {attempt + 1}/{self.max_attempts}", log_file)
+            attempt += 1
+            self._log(f"\nBatch {attempt}/{self.max_attempts}", log_file)
             
             # Create and run a new event loop for each batch
             loop = asyncio.new_event_loop()
@@ -161,19 +164,21 @@ class SentenceGenerator:
                 self._log(f"RMSE: {overall_best_rmse:.4f}", log_file)
                 self._log(f"Matching emotions: {batch_results[0][3]}/3", log_file)
                 
-                # Only stop early if we find an extremely good match
-                if overall_best_rmse <= self.perfect_match_threshold:
+                # Stop if we achieve target RMSE
+                if overall_best_rmse <= self.rmse_target:
                     total_time = time.time() - start_time
-                    self._log(f"\n✓ Found perfect match! Stopping early.", log_file)
+                    self._log(f"\n✓ Found sentence with target RMSE! Stopping.", log_file)
                     self._log(f"Total generation time: {total_time:.2f} seconds", log_file)
                     return overall_best_sentence
             
             # Keep best sentences for next iteration
             best_sentences = [sent for sent, _, _, _ in batch_results[:self.keep_best]]
             
-            batch_end = time.time()
-            self._log(f"Batch {attempt + 1} completed in {batch_end - batch_start:.2f} seconds", log_file)
-        
+            # Check if we hit the safety limit
+            if attempt >= self.max_attempts:
+                self._log(f"\n! Hit maximum attempts ({self.max_attempts}) without reaching target RMSE.", log_file)
+                break
+
         total_time = time.time() - start_time
         print("\n! Returning best sentence after all batches")
         print(f"Best RMSE achieved: {overall_best_rmse:.4f}")
