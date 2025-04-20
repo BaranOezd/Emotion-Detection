@@ -27,17 +27,17 @@ class SentenceGenerator:
         self.model_name = model_name
         self.max_tokens = max_tokens
         self.max_attempts = 3  # Fixed maximum attempts
-        self.rmse_target = 0.12  # Target for acceptable emotion match
-        self.emotion_threshold = 0.15  # Threshold for individual emotion matches
+        self.rmse_target = 0.10  # Target for acceptable emotion match
+        self.emotion_threshold = 0.12  # Threshold for individual emotion matches
         self.analyzer = analyzer if analyzer else EmotionsAnalyzer(model_name="SamLowe/roberta-base-go_emotions")
-        self.batch_size = 50  # Number of sentences per batch
-        self.keep_best = 7    # Number of best sentences to keep
+        self.batch_size = 30  # Number of sentences per batch
+        self.keep_best = 5    # Number of best sentences to keep
 
     def _log(self, message):
         """Simple console logging"""
         print(message)
 
-    async def _generate_sentences_batch(self, sentences, user_top_emotions, context_text):
+    async def _generate_sentences_batch(self, sentences, user_top_emotions):
         """Generate multiple sentences concurrently"""
         tasks = []
         sentences_per_source = max(1, self.batch_size // len(sentences))  # Distribute batch size evenly
@@ -47,7 +47,7 @@ class SentenceGenerator:
         async with aiohttp.ClientSession() as session:
             for sentence in sentences:
                 for _ in range(sentences_per_source):
-                    task = self._generate_sentence_async(session, sentence, user_top_emotions, context_text)
+                    task = self._generate_sentence_async(session, sentence, user_top_emotions)
                     tasks.append(task)
             
             # Process sentences as they complete
@@ -60,33 +60,28 @@ class SentenceGenerator:
             
             return completed
 
-    def generate_modified_sentence(self, original_sentence, new_emotion_levels, context_text=None):
+    def generate_modified_sentence(self, original_sentence, new_emotion_levels):
         start_time = time.time()
         self._log("\n" + "="*80)
         self._log("Starting New Sentence Generation")
         self._log(f"Original sentence: {original_sentence}")
         self._log(f"Target emotions: {new_emotion_levels}")
-        if context_text:
-            self._log(f"Context: {context_text}")
         
         # Normalize emotion keys to match the model's expected format
         target_emotions = self._normalize_emotion_keys(new_emotion_levels)
         
-        # Identify the user's top three emotions from the input and normalize to two decimals
+        # Identify the user's top three emotions from the input
         user_top_emotions = {k: round(v, 2) for k, v in sorted(target_emotions.items(), key=lambda x: x[1], reverse=True)[:3]}
         print(f"User's top three emotions (normalized): {user_top_emotions}")
         
         # Initialize the batch system
-        best_sentences = [original_sentence]  # Start with the original sentence
-        best_rmse = float('inf')
-        best_sentence = original_sentence
+        best_sentences = [original_sentence]
         overall_best_rmse = float('inf')
         overall_best_sentence = original_sentence
         overall_best_emotions = None
-        overall_best_score = float('inf')
         
         attempt = 0
-        while True:
+        while attempt < self.max_attempts:
             batch_start = time.time()
             attempt += 1
             self._log(f"\nBatch {attempt}/{self.max_attempts}")
@@ -96,37 +91,22 @@ class SentenceGenerator:
             asyncio.set_event_loop(loop)
             try:
                 batch = loop.run_until_complete(
-                    self._generate_sentences_batch(best_sentences, user_top_emotions, context_text)
+                    self._generate_sentences_batch(best_sentences, user_top_emotions)
                 )
             finally:
                 loop.close()
             
             print("\nAnalyzing emotions for generated sentences...")
             batch_results = []
-            
-            # Process and analyze sentences one by one
-            for idx, sentence in enumerate(batch, 1):
+
+            # Process and analyze sentences
+            for sentence in batch:
                 emotions = self.analyzer.analyze_emotions(sentence)
                 rmse, matches = self._calculate_rmse(user_top_emotions, emotions)
-                
-                self._log(f"\nCandidate {idx}:")
-                self._log(f"RMSE: {rmse:.4f}")
-                self._log(f"Matching emotions: {matches}/3")
-                self._log(f"Text: {sentence}")
-                
-                batch_results.append((sentence, emotions, rmse, matches))
+                batch_results.append((sentence, emotions, rmse))
             
-            # Sort by RMSE, using matches as secondary criteria
-            batch_results.sort(key=lambda x: (x[2], -x[3]))
-            
-            # Show which sentences are selected for the next batch
-            selected_sentences = batch_results[:self.keep_best]
-            print(f"\nSelected {self.keep_best} best sentences for next batch:")
-            for idx, (sentence, _, rmse, matches) in enumerate(selected_sentences, 1):
-                print(f"{idx}. RMSE {rmse:.4f} (matches: {matches}/3): {sentence[:100]}...")
-            
-            batch_end = time.time()
-            self._log(f"Batch completed in {batch_end - batch_start:.2f} seconds")
+            # Sort by RMSE
+            batch_results.sort(key=lambda x: x[2])
             
             # Update overall best if this batch has a better sentence
             if batch_results[0][2] < overall_best_rmse:
@@ -134,52 +114,26 @@ class SentenceGenerator:
                 overall_best_sentence = batch_results[0][0]
                 overall_best_emotions = batch_results[0][1]
                 print(f"\nNew best sentence found with RMSE {overall_best_rmse:.4f}")
-                self._log(f"\nNew best sentence found!")
+                self._log(f"New best sentence found!")
                 self._log(f"RMSE: {overall_best_rmse:.4f}")
-                self._log(f"Matching emotions: {batch_results[0][3]}/3")
                 
                 # Stop if we achieve target RMSE
                 if overall_best_rmse <= self.rmse_target:
-                    total_time = time.time() - start_time
                     self._log(f"\n✓ Found sentence with target RMSE! Stopping.")
-                    self._log(f"Total generation time: {total_time:.2f} seconds")
+                    self._log(f"Total generation time: {time.time() - start_time:.2f} seconds")
                     return overall_best_sentence
             
             # Keep best sentences for next iteration
-            best_sentences = [sent for sent, _, _, _ in batch_results[:self.keep_best]]
-            
-            # Check if we hit the safety limit
-            if attempt >= self.max_attempts:
-                self._log(f"\n! Hit maximum attempts ({self.max_attempts}) without reaching target RMSE.")
-                break
-
-        total_time = time.time() - start_time
-        print("\n! Returning best sentence after all batches")
-        print(f"Best RMSE achieved: {overall_best_rmse:.4f}")
-        print(f"Total generation time: {total_time:.2f} seconds")
+            best_sentences = [result[0] for result in batch_results[:self.keep_best]]
         
-        # Log final selection at the end
-        self._log("\n" + "="*50)
-        self._log("Final Selected Sentence:")
-        self._log(f"RMSE: {overall_best_rmse:.4f}")
-        self._log(f"Sentence: {overall_best_sentence}")
-        self._log("Final Emotions:")
-        
-        # Get and normalize top 3 emotions
-        top_final = dict(sorted(overall_best_emotions.items(), key=lambda x: x[1], reverse=True)[:3])
-        total = sum(top_final.values())
-        normalized_final = {k: round(v/total, 2) for k, v in top_final.items()}
-        
-        for emotion, value in normalized_final.items():
-            self._log(f"  - {emotion}: {value:.2f}")
-            
-        # Verify normalization
-        total = sum(normalized_final.values())
-        self._log(f"Total (should be 1.00): {total:.2f}")
+        self._log(f"\n! Hit maximum attempts ({self.max_attempts}) without reaching target RMSE.")
+        self._log(f"Returning best sentence after all batches")
+        self._log(f"Best RMSE achieved: {overall_best_rmse:.4f}")
+        self._log(f"Total generation time: {time.time() - start_time:.2f} seconds")
         
         return overall_best_sentence
 
-    async def _generate_sentence_async(self, session, original_sentence, target_emotions, context_text=None):
+    async def _generate_sentence_async(self, session, original_sentence, target_emotions):
         """Async version of sentence generation"""
         # Format target emotions to two decimals for the prompt
         formatted_target = {k: round(v, 2) for k, v in target_emotions.items()}
@@ -187,10 +141,8 @@ class SentenceGenerator:
             f"Below is the original sentence:\n\"{original_sentence}\"\n\n"
             f"The new desired emotion levels are:\n{json.dumps(formatted_target, indent=2)}\n\n"
         )
-        if context_text:
-            prompt += f"\n\nAdditional context:\n{context_text}"
         prompt += (
-            "Please generate a new sentence that retains the original context and is similar in length, "
+            "Please generate a new, single sentence that retains the original context and is similar in length, "
             "but reflects these specific emotional values. Focus on matching the top three emotions provided. "
             "Adjust the tone accordingly without changing the meaning. "
             "Return your output strictly as a JSON object with one key 'sentence'. For example, the output should be:\n"

@@ -44,8 +44,7 @@ def analyze():
 
         print(f"Analysis complete, returning {len(analysis['results'])} results")
         return jsonify({
-            "results": analysis["results"],
-            "progress": analysis["progress"]
+            "results": analysis["results"]
         })
         
     except Exception as e:
@@ -61,14 +60,13 @@ def modify_sentence():
         print("Received data for modification:", data)
         original_sentence = data.get("sentence", "").strip()
         new_emotion_levels = data.get("new_emotions")
-        context_text = data.get("context", "")
         
         if not original_sentence or not new_emotion_levels:
             return jsonify({"error": "Sentence and new_emotions must be provided"}), 400
 
         print("/modify endpoint triggered")
         # Generate the modified sentence
-        new_sentence = sentence_generator.generate_modified_sentence(original_sentence, new_emotion_levels, context_text)
+        new_sentence = sentence_generator.generate_modified_sentence(original_sentence, new_emotion_levels)
         
         # Analyze the emotions of the generated sentence
         actual_emotions = analyzer.analyze_emotions(new_sentence)
@@ -107,10 +105,10 @@ def upload():
             return jsonify({"error": "Uploaded file is empty"}), 400
 
         print(f"File received: {file.filename}")
-        print("Calling GoEmotionsAnalyzer...")
+        print("Calling EmotionsAnalyzer...")
         results = analyzer.analyze_dynamic_text(content)
         print("Analysis complete")
-        return jsonify({"results": results})
+        return jsonify({"results": results["results"]})
     except Exception as e:
         print(f"Error during upload: {e}")
         print(traceback.format_exc())
