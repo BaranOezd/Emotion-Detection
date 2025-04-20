@@ -213,11 +213,33 @@ class EmotionsAnalyzer:
 
     def split_text_into_sentences(self, text):
         """
-        Splits text into sentences using spaCy's robust sentence segmentation
-        while preserving the original white spaces.
+        Splits text into sentences while preserving all whitespace and paragraph structure.
         """
+        # Preserve all newlines by replacing them temporarily
+        text = text.replace('\n\n', ' <PARAGRAPH> ')
+        text = text.replace('\n', ' <NEWLINE> ')
+        
+        # Process the text with spaCy
         doc = self.spacy_nlp(text)
-        sentences = [sent.text for sent in doc.sents]
+        sentences = []
+        
+        for sent in doc.sents:
+            sent_text = sent.text.strip()
+            if '<PARAGRAPH>' in sent_text:
+                # Split and handle paragraph breaks
+                parts = sent_text.split('<PARAGRAPH>')
+                for i, part in enumerate(parts):
+                    part = part.replace('<NEWLINE>', '\n').strip()
+                    if part:
+                        sentences.append(part)
+                    if i < len(parts) - 1:
+                        sentences.append('\n\n')  # Add paragraph break
+            else:
+                # Handle regular sentences with potential line breaks
+                sent_text = sent_text.replace('<NEWLINE>', '\n')
+                if sent_text:
+                    sentences.append(sent_text)
+        
         return sentences
 
     def analyze_emotions_batch(self, sentences):
