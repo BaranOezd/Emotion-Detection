@@ -461,7 +461,9 @@ export default class LineChartModule {
       .attr("height", 40) // Increased height for highlight bar
       .attr("fill", "rgba(80, 80, 80, 0.2)") // Semi-transparent gray
       .attr("rx", 6) // Slightly increased rounded corners
-      .attr("ry", 6);
+      .attr("ry", 6)
+      .style("pointer-events", "none") // Allow interaction with elements above
+      .lower(); // Move highlight to back
     
     // Highlight the y-axis tick for the selected sentence
     this.chartSvg.selectAll(".y-axis .tick")

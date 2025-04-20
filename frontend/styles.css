@@ -321,3 +321,16 @@ button.loading::after {
   display: none;
   z-index: 1000;
 }
+
+.sentence-highlight {
+    z-index: 1;
+}
+
+.lines {
+    z-index: 2;
+    position: relative;
+}
+
+.line-tooltip {
+    z-index: 1000;
+}
