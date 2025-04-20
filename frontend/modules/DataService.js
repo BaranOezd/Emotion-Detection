@@ -2,26 +2,32 @@ export class DataService {
     constructor() {}
   
     async analyzeText(text) {
-      try {
-        const response = await fetch("/analyze", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: text })
-        });
-        
-        if (!response.ok) {
-          throw new Error("Network response was not ok: " + response.statusText);
+        try {
+            const response = await fetch("/analyze", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text: text })
+            });
+            
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.error || `HTTP error! status: ${response.status}`);
+            }
+            
+            if (!data.results || !Array.isArray(data.results) || data.results.length === 0) {
+                throw new Error("Invalid or empty response from server");
+            }
+
+            console.log("Backend response:", data);
+            return data;
+            
+        } catch (error) {
+            console.error("Error analyzing text:", error);
+            throw error;
         }
-        
-        const data = await response.json();
-        console.log("Backend response:", data);
-        return data;
-      } catch (error) {
-        console.error("Error analyzing text:", error);
-        throw error;
-      }
     }  
-    
+  
     async uploadFile(file) {
       const formData = new FormData();
       formData.append("file", file);

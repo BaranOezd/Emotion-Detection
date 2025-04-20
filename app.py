@@ -35,10 +35,19 @@ def analyze():
         if not text:
             return jsonify({"error": "No text provided"}), 400
 
-        print("/analyze endpoint triggered")
-        results = analyzer.analyze_dynamic_text(text)
-        print("Analysis complete")
-        return jsonify({"results": results})
+        print("Starting analysis of text:", text[:100], "...")
+        analysis = analyzer.analyze_dynamic_text(text)
+        
+        if not analysis or not analysis["results"]:
+            print("Warning: No results returned from analyzer")
+            return jsonify({"error": "No valid results could be generated"}), 400
+
+        print(f"Analysis complete, returning {len(analysis['results'])} results")
+        return jsonify({
+            "results": analysis["results"],
+            "progress": analysis["progress"]
+        })
+        
     except Exception as e:
         print(f"Error during analysis: {e}")
         print(traceback.format_exc())
