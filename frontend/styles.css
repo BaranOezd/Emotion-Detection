@@ -199,6 +199,8 @@ button {
   justify-content: center;
   margin: 0 var(--space-xs);
   font-weight: 500;
+  position: relative;
+  overflow: hidden;
 }
 
 button:hover {
@@ -217,6 +219,55 @@ button:disabled {
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
+}
+
+button.generating {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+button.generating:not(.loading) {
+  background-color: var(--color-disabled);
+}
+
+button.loading {
+  background-color: var(--color-primary);
+  cursor: wait;
+  color: transparent;  /* Hide text while loading */
+}
+
+button.loading::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  top: 50%;
+  left: 50%;
+  margin: -8px 0 0 -8px;
+  border: 2px solid transparent;
+  border-top-color: var(--color-bg);
+  border-right-color: var(--color-bg);
+  border-radius: 50%;
+  animation: button-loading-spinner 0.8s linear infinite;
+}
+
+@keyframes button-loading-spinner {
+  from {
+    transform: rotate(0turn);
+  }
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+/* Hide default spinner when bar chart is loading */
+.bar-chart-loading .spinner {
+  display: none !important;
+}
+
+.bar.generating {
+  pointer-events: none;
+  opacity: 0.7;
 }
 
 /* Clear All button hover effect */

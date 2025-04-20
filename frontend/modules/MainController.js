@@ -419,6 +419,9 @@ class MainController {
       sentenceData.originalSentence = sentenceData.sentence;
     }
     
+    // Disable all interactive elements during generation
+    this.setGenerating(true);
+    
     // Use the temporary emotion values from BarChart instead of sentenceData.emotions
     const emotionsToSend = this.barChartModule.getCurrentEmotionValues();
     
@@ -435,9 +438,12 @@ class MainController {
         }
         // Update the data with the new values from the backend
         sentenceData.sentence = data.new_sentence;
-        sentenceData.emotions = emotionsToSend; // Update the actual emotions with the temporary values
+        sentenceData.emotions = emotionsToSend;
         sentenceData.index = currentIndex;
         this.data[currentIndex] = sentenceData;
+        
+        // Re-enable interactive elements
+        this.setGenerating(false);
         
         // Clear existing highlight
         this.lineChartModule.clearHighlight();
@@ -471,7 +477,36 @@ class MainController {
       .catch(error => {
         console.error("Error modifying sentence:", error);
         alert("An error occurred while modifying the sentence: " + error.message);
+        this.setGenerating(false);
       });
+  }
+
+  setGenerating(isGenerating) {
+    const buttons = document.querySelectorAll('button');
+    const barChartBars = document.querySelectorAll('.bar');
+    const changeSentenceButton = document.getElementById("changeSentenceButton");
+    
+    document.body.classList.toggle('bar-chart-loading', isGenerating);
+    
+    buttons.forEach(button => {
+        button.disabled = isGenerating;
+        button.classList.toggle('generating', isGenerating);
+    });
+    
+    // Add loading animation only to the change sentence button
+    if (changeSentenceButton) {
+        changeSentenceButton.classList.toggle('loading', isGenerating);
+    }
+    
+    barChartBars.forEach(bar => {
+        bar.style.pointerEvents = isGenerating ? 'none' : 'auto';
+    });
+    
+    // Update loading indicator only if not a bar chart operation
+    const loadingIndicator = document.getElementById("loadingIndicator");
+    if (loadingIndicator && !isGenerating) {
+        loadingIndicator.style.display = "none";
+    }
   }
 }
 
