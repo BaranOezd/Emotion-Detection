@@ -1,12 +1,9 @@
-import re
 import openai
 import json
 import numpy as np
 import asyncio
 import aiohttp
 import time
-import os
-from datetime import datetime
 from backend.Emotions_analyzer import EmotionsAnalyzer
 
 # Read the OpenAI API key from the file
@@ -35,26 +32,10 @@ class SentenceGenerator:
         self.analyzer = analyzer if analyzer else EmotionsAnalyzer(model_name="SamLowe/roberta-base-go_emotions")
         self.batch_size = 50  # Number of sentences per batch
         self.keep_best = 7    # Number of best sentences to keep
-        
-        # Set up logging
-        self.log_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs")
-        os.makedirs(self.log_dir, exist_ok=True)
 
-    def _create_new_log(self):
-        """Create a new log file for each sentence generation attempt"""
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        return os.path.join(self.log_dir, f"sentence_generation_{timestamp}.txt")
-
-    def _log(self, message, log_file, console=True):
-        """Log message to file and optionally console"""
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_message = f"[{timestamp}] {message}"
-        
-        with open(log_file, "a", encoding="utf-8") as f:
-            f.write(log_message + "\n")
-        
-        if console:
-            print(message)
+    def _log(self, message):
+        """Simple console logging"""
+        print(message)
 
     async def _generate_sentences_batch(self, sentences, user_top_emotions, context_text):
         """Generate multiple sentences concurrently"""
@@ -80,15 +61,13 @@ class SentenceGenerator:
             return completed
 
     def generate_modified_sentence(self, original_sentence, new_emotion_levels, context_text=None):
-        log_file = self._create_new_log()
-        self.current_log_file = log_file  # Store current log file for scoring
         start_time = time.time()
-        self._log("\n" + "="*80, log_file)
-        self._log("Starting New Sentence Generation", log_file)
-        self._log(f"Original sentence: {original_sentence}", log_file)
-        self._log(f"Target emotions: {new_emotion_levels}", log_file)
+        self._log("\n" + "="*80)
+        self._log("Starting New Sentence Generation")
+        self._log(f"Original sentence: {original_sentence}")
+        self._log(f"Target emotions: {new_emotion_levels}")
         if context_text:
-            self._log(f"Context: {context_text}", log_file)
+            self._log(f"Context: {context_text}")
         
         # Normalize emotion keys to match the model's expected format
         target_emotions = self._normalize_emotion_keys(new_emotion_levels)
@@ -110,7 +89,7 @@ class SentenceGenerator:
         while True:
             batch_start = time.time()
             attempt += 1
-            self._log(f"\nBatch {attempt}/{self.max_attempts}", log_file)
+            self._log(f"\nBatch {attempt}/{self.max_attempts}")
             
             # Create and run a new event loop for each batch
             loop = asyncio.new_event_loop()
@@ -130,10 +109,10 @@ class SentenceGenerator:
                 emotions = self.analyzer.analyze_emotions(sentence)
                 rmse, matches = self._calculate_rmse(user_top_emotions, emotions)
                 
-                self._log(f"\nCandidate {idx}:", log_file)
-                self._log(f"RMSE: {rmse:.4f}", log_file)
-                self._log(f"Matching emotions: {matches}/3", log_file)
-                self._log(f"Text: {sentence}", log_file)
+                self._log(f"\nCandidate {idx}:")
+                self._log(f"RMSE: {rmse:.4f}")
+                self._log(f"Matching emotions: {matches}/3")
+                self._log(f"Text: {sentence}")
                 
                 batch_results.append((sentence, emotions, rmse, matches))
             
@@ -147,7 +126,7 @@ class SentenceGenerator:
                 print(f"{idx}. RMSE {rmse:.4f} (matches: {matches}/3): {sentence[:100]}...")
             
             batch_end = time.time()
-            self._log(f"Batch completed in {batch_end - batch_start:.2f} seconds", log_file)
+            self._log(f"Batch completed in {batch_end - batch_start:.2f} seconds")
             
             # Update overall best if this batch has a better sentence
             if batch_results[0][2] < overall_best_rmse:
@@ -155,15 +134,15 @@ class SentenceGenerator:
                 overall_best_sentence = batch_results[0][0]
                 overall_best_emotions = batch_results[0][1]
                 print(f"\nNew best sentence found with RMSE {overall_best_rmse:.4f}")
-                self._log(f"\nNew best sentence found!", log_file)
-                self._log(f"RMSE: {overall_best_rmse:.4f}", log_file)
-                self._log(f"Matching emotions: {batch_results[0][3]}/3", log_file)
+                self._log(f"\nNew best sentence found!")
+                self._log(f"RMSE: {overall_best_rmse:.4f}")
+                self._log(f"Matching emotions: {batch_results[0][3]}/3")
                 
                 # Stop if we achieve target RMSE
                 if overall_best_rmse <= self.rmse_target:
                     total_time = time.time() - start_time
-                    self._log(f"\n✓ Found sentence with target RMSE! Stopping.", log_file)
-                    self._log(f"Total generation time: {total_time:.2f} seconds", log_file)
+                    self._log(f"\n✓ Found sentence with target RMSE! Stopping.")
+                    self._log(f"Total generation time: {total_time:.2f} seconds")
                     return overall_best_sentence
             
             # Keep best sentences for next iteration
@@ -171,7 +150,7 @@ class SentenceGenerator:
             
             # Check if we hit the safety limit
             if attempt >= self.max_attempts:
-                self._log(f"\n! Hit maximum attempts ({self.max_attempts}) without reaching target RMSE.", log_file)
+                self._log(f"\n! Hit maximum attempts ({self.max_attempts}) without reaching target RMSE.")
                 break
 
         total_time = time.time() - start_time
@@ -180,11 +159,11 @@ class SentenceGenerator:
         print(f"Total generation time: {total_time:.2f} seconds")
         
         # Log final selection at the end
-        self._log("\n" + "="*50, log_file)
-        self._log("Final Selected Sentence:", log_file)
-        self._log(f"RMSE: {overall_best_rmse:.4f}", log_file)
-        self._log(f"Sentence: {overall_best_sentence}", log_file)
-        self._log("Final Emotions:", log_file)
+        self._log("\n" + "="*50)
+        self._log("Final Selected Sentence:")
+        self._log(f"RMSE: {overall_best_rmse:.4f}")
+        self._log(f"Sentence: {overall_best_sentence}")
+        self._log("Final Emotions:")
         
         # Get and normalize top 3 emotions
         top_final = dict(sorted(overall_best_emotions.items(), key=lambda x: x[1], reverse=True)[:3])
@@ -192,11 +171,11 @@ class SentenceGenerator:
         normalized_final = {k: round(v/total, 2) for k, v in top_final.items()}
         
         for emotion, value in normalized_final.items():
-            self._log(f"  - {emotion}: {value:.2f}", log_file)
+            self._log(f"  - {emotion}: {value:.2f}")
             
         # Verify normalization
         total = sum(normalized_final.values())
-        self._log(f"Total (should be 1.00): {total:.2f}", log_file)
+        self._log(f"Total (should be 1.00): {total:.2f}")
         
         return overall_best_sentence
 
@@ -321,13 +300,11 @@ class SentenceGenerator:
         
         rmse = np.sqrt(total_diff / 3)
         
-        # Log with normalized values
-        if hasattr(self, '_log'):
-            self._log("\nTop 3 Emotion Comparisons (normalized):", self.current_log_file)
-            for emotion, target, actual, diff in details:
-                match = "✓" if diff <= self.emotion_threshold else "✗"
-                self._log(f"  {emotion}: target={target:.2f}, actual={actual:.2f}, diff={diff:.2f} {match}", 
-                         self.current_log_file)
-            self._log(f"Top emotions within threshold: {matches}/3", self.current_log_file)
+        # Log comparison to console only
+        self._log("\nTop 3 Emotion Comparisons (normalized):")
+        for emotion, target, actual, diff in details:
+            match = "✓" if diff <= self.emotion_threshold else "✗"
+            self._log(f"  {emotion}: target={target:.2f}, actual={actual:.2f}, diff={diff:.2f} {match}")
+        self._log(f"Top emotions within threshold: {matches}/3")
         
         return rmse, matches
