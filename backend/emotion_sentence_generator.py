@@ -142,16 +142,26 @@ class SentenceGenerator:
             f"The new desired emotion levels are:\n{json.dumps(formatted_target, indent=2)}\n\n"
         )
         prompt += (
-            "Please generate a new, single sentence that retains the original context and is similar in length, "
-            "but reflects these specific emotional values. Focus on matching the top three emotions provided. "
-            "Adjust the tone accordingly without changing the meaning. "
-            "Return your output strictly as a JSON object with one key 'sentence'. For example, the output should be:\n"
+            "Your task is to rewrite the original sentence to reflect the specified emotional levels as closely as possible. "
+            "The rewritten sentence should:\n"
+            "1. Retain the original context and meaning.\n"
+            "2. Be similar in length to the original sentence.\n"
+            "3. Match the top three emotions provided in the target emotional levels.\n"
+            "4. Adjust the tone and word choice to align with the specified emotions without introducing new ideas.\n\n"
+            "Important Notes:\n"
+            "- Focus on the top three emotions with the highest values in the target emotional levels.\n"
+            "- Ensure the sentence remains grammatically correct and natural.\n"
+            "- Avoid exaggerating or diminishing the emotional tone beyond the specified levels.\n\n"
+            "- Avoid clichés and overused phrases.\n"
+
+            "Output Format:\n"
+            "Return your output strictly as a JSON object with one key 'sentence'. For example:\n"
             "{\"sentence\": \"Your generated sentence here\"}\n"
-            "Do not include any additional text or explanation."
+            "Do not include any additional text, explanation, or formatting outside the JSON object."
         )
         
         messages = [
-            {"role": "system", "content": "You are a helpful assistant skilled in creative rewriting to convey specific emotions."},
+            {"role": "system", "content": "You are a highly skilled assistant specializing in rewriting sentences to convey specific emotional tones with precision."},
             {"role": "user", "content": prompt}
         ]
         
