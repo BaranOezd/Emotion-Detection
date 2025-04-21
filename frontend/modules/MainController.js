@@ -49,6 +49,9 @@ class MainController {
       this.handleLineChartSentenceSelection(index);
     });
     
+    // Register for automatic text analysis when content changes
+    this.textEditorModule.onContentChange(this.handleAutomaticAnalysis.bind(this));
+    
     this.setupEventListeners();
   }
   
@@ -128,6 +131,11 @@ class MainController {
   }
   
   setupEventListeners() {
+    // Try to load saved data when the app starts
+    if (this.loadSavedData()) {
+      console.log('Successfully loaded saved data');
+    }
+
     const analyzeButton = document.getElementById("analyzeButton");
     const uploadButton = document.getElementById("uploadButton");
     const barChartButtons = document.getElementById("barChartButtons");
@@ -312,7 +320,13 @@ class MainController {
     this.barChartModule.emotions = this.emotions;
   } 
   
-  updateSentenceList() {
+  /**
+   * Update the list of sentences in the text editor
+   * @param {Object} options - Options for updating sentences
+   * @param {boolean} [options.preserveCursor=false] - Whether to preserve cursor position
+   * @param {Function} [options.afterRender] - Callback after rendering completes
+   */
+  updateSentenceList(options = {}) {
     const barChartButtons = document.getElementById("barChartButtons");
     // Hide buttons when rendering new sentence list
     barChartButtons.classList.remove("visible");
@@ -323,49 +337,54 @@ class MainController {
     // Clear any existing highlights before starting
     this.lineChartModule.clearHighlight();
     
-    // Render the sentences using TextEditorModule.
-    this.textEditorModule.renderSentences(this.data, null, (selectedIndex) => {
-      if (selectedIndex >= 0 && selectedIndex < this.data.length) {
-        const sentenceData = this.data[selectedIndex];
-        sentenceData.index = selectedIndex;
-        
-        // Force highlight update in the line chart when a sentence is selected in the text editor
-        this.lineChartModule.highlightSentence(selectedIndex);
-        
-        // Skip re-rendering the bar chart if the same sentence is clicked
-        if (this.lastSelectedIndex === selectedIndex) {
-          return;
-        }
-        
-        // Show buttons when a sentence is selected
-        barChartButtons.classList.add("visible");
-        
-        // Reset emotion values to their original state (unsaved changes discarded).
-        if (sentenceData.originalEmotions) {
-          sentenceData.emotions = Object.assign({}, sentenceData.originalEmotions);
+    // Render the sentences using TextEditorModule with options
+    this.textEditorModule.renderSentences(
+      this.data, 
+      null, 
+      (selectedIndex) => {
+        if (selectedIndex >= 0 && selectedIndex < this.data.length) {
+          const sentenceData = this.data[selectedIndex];
+          sentenceData.index = selectedIndex;
+          
+          // Force highlight update in the line chart when a sentence is selected in the text editor
+          this.lineChartModule.highlightSentence(selectedIndex);
+          
+          // Skip re-rendering the bar chart if the same sentence is clicked
+          if (this.lastSelectedIndex === selectedIndex) {
+            return;
+          }
+          
+          // Show buttons when a sentence is selected
+          barChartButtons.classList.add("visible");
+          
+          // Reset emotion values to their original state (unsaved changes discarded).
+          if (sentenceData.originalEmotions) {
+            sentenceData.emotions = Object.assign({}, sentenceData.originalEmotions);
+          } else {
+            sentenceData.originalEmotions = Object.assign({}, sentenceData.emotions);
+          }
+          
+          // Store the currently selected index.
+          this.lastSelectedIndex = selectedIndex;
+          
+          // Explicitly set skipAnimation to false to ensure animation when switching sentences
+          this.barChartModule.render(sentenceData, {
+            onReset: this.onReset.bind(this),
+            onChangeSentence: this.handleChangeSentence.bind(this),
+            skipAnimation: false // Always animate when switching between sentences
+          });
         } else {
-          sentenceData.originalEmotions = Object.assign({}, sentenceData.emotions);
+          console.error("Invalid selectedIndex:", selectedIndex);
+          
+          // If no valid selection but we had a previous highlight, restore it
+          if (prevHighlightIndex !== null && prevHighlightIndex >= 0 && 
+              prevHighlightIndex < this.data.length) {
+            this.lineChartModule.highlightSentence(prevHighlightIndex);
+          }
         }
-        
-        // Store the currently selected index.
-        this.lastSelectedIndex = selectedIndex;
-        
-        // Explicitly set skipAnimation to false to ensure animation when switching sentences
-        this.barChartModule.render(sentenceData, {
-          onReset: this.onReset.bind(this),
-          onChangeSentence: this.handleChangeSentence.bind(this),
-          skipAnimation: false // Always animate when switching between sentences
-        });
-      } else {
-        console.error("Invalid selectedIndex:", selectedIndex);
-        
-        // If no valid selection but we had a previous highlight, restore it
-        if (prevHighlightIndex !== null && prevHighlightIndex >= 0 && 
-            prevHighlightIndex < this.data.length) {
-          this.lineChartModule.highlightSentence(prevHighlightIndex);
-        }
-      }
-    });
+      },
+      options // Pass options to renderSentences
+    );
 
     // Immediately sync the line chart with visible sentences - removed setTimeout
     const visibleSentences = this.textEditorModule.getVisibleSentences();
@@ -442,6 +461,9 @@ class MainController {
         sentenceData.index = currentIndex;
         this.data[currentIndex] = sentenceData;
         
+        // Save the entire data array to localStorage
+        localStorage.setItem('analysisData', JSON.stringify(this.data));
+        
         // Re-enable interactive elements
         this.setGenerating(false);
         
@@ -507,6 +529,64 @@ class MainController {
     if (loadingIndicator && !isGenerating) {
         loadingIndicator.style.display = "none";
     }
+  }
+
+  loadSavedData() {
+    try {
+      const savedData = localStorage.getItem('analysisData');
+      if (savedData) {
+        this.data = JSON.parse(savedData);
+        if (this.data && this.data.length > 0) {
+          this.updateEmotions();
+          this.updateVisualizations();
+          this.updateSentenceList();
+          console.log('Restored saved data from localStorage');
+          return true;
+        }
+      }
+      return false;
+    } catch (error) {
+      console.error('Error loading saved data:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Handle automatic analysis when text content changes
+   * @param {string} text - The updated text content
+   * @param {Object} context - Additional context information
+   */
+  handleAutomaticAnalysis(text, context = {}) {
+    // Don't analyze if text is too short
+    if (!text || text.length < 10) return;
+    
+    console.log("Auto-analyzing text after user stopped typing...");
+    
+    // Show subtle loading indicator (without blocking UI)
+    document.body.classList.add('analyzing');
+    
+    this.dataService.analyzeText(text)
+      .then(data => {
+        if (data.results) {
+          this.data = data.results;
+          this.updateEmotions();
+          this.updateVisualizations();
+          
+          // Update sentence list with specific options to preserve cursor position
+          this.updateSentenceList({
+            preserveCursor: true // Set this option to true to preserve cursor position
+          });
+          
+          console.log("Auto-analysis complete");
+        }
+      })
+      .catch(error => {
+        console.error("Error during auto-analysis:", error);
+        // Don't show error alerts for automatic analysis to avoid disrupting the user
+      })
+      .finally(() => {
+        document.body.classList.remove('analyzing');
+      });
   }
 }
 

@@ -177,6 +177,11 @@ svg {
   background-color: var(--color-bg);
 }
 
+.text-editor:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px rgba(0, 123, 255, 0.25);
+}
+
 .highlighted-sentence.selected {
   background-color: var(--color-highlight); 
 }
@@ -333,4 +338,31 @@ button.loading::after {
 
 .line-tooltip {
     z-index: 1000;
+}
+
+/* Add to existing CSS */
+body.analyzing #analyzeButton {
+  position: relative;
+  overflow: hidden;
+}
+
+body.analyzing #analyzeButton::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  width: 100%;
+  background: linear-gradient(to right, transparent, var(--color-primary), transparent);
+  animation: analyze-progress 2s infinite ease-in-out;
+  opacity: 0.7;
+}
+
+@keyframes analyze-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
 }
