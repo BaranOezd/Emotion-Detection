@@ -457,7 +457,7 @@ class MainController {
         }
         // Update the data with the new values from the backend
         sentenceData.sentence = data.new_sentence;
-        sentenceData.emotions = emotionsToSend;
+        sentenceData.emotions = data.emotion_levels; // Use the real emotion values returned by the generator
         sentenceData.index = currentIndex;
         this.data[currentIndex] = sentenceData;
         
@@ -486,6 +486,7 @@ class MainController {
           // Use skipAnimation true ONLY when it's the same sentence after a change
           const skipAnimation = selectedIndex === currentIndex;
           
+          // Render the bar chart with the updated real emotion values
           this.barChartModule.render(selectedSentence, {
             onReset: this.onReset.bind(this),
             onChangeSentence: this.handleChangeSentence.bind(this),
