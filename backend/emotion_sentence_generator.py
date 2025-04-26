@@ -152,7 +152,7 @@ class SentenceGenerator:
             "- Focus on the top three emotions with the highest values in the target emotional levels.\n"
             "- Ensure the sentence remains grammatically correct and natural.\n"
             "- Avoid exaggerating or diminishing the emotional tone beyond the specified levels.\n\n"
-            "- Avoid clichés and overused phrases.\n"
+            "- Avoid clichés, overused phrases and direct names of emotions.\n"
 
             "Output Format:\n"
             "Return your output strictly as a JSON object with one key 'sentence'. For example:\n"
