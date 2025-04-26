@@ -83,37 +83,39 @@ class EmotionsAnalyzer:
         sentences = self.split_text_into_sentences(text)
         if not sentences:
             return {"results": [], "progress": {"processed": 0, "total": 0}}
-        results = self._process_batch_parallel(sentences)
-        return {"results": [{"sentence": sent, "emotions": emo} for sent, emo in zip(sentences, results)]}
+
+        # Filter out standalone newlines and whitespace
+        valid_sentences = []
+        for sentence in sentences:
+            # Skip if sentence is just newlines or whitespace
+            if sentence.strip() and not sentence.isspace() and sentence != '\n' and sentence != '\n\n':
+                valid_sentences.append(sentence)
+
+        if not valid_sentences:
+            return {"results": [], "progress": {"processed": 0, "total": 0}}
+
+        results = self._process_batch_parallel(valid_sentences)
+        return {"results": [{"sentence": sent, "emotions": emo} for sent, emo in zip(valid_sentences, results)]}
 
     def split_text_into_sentences(self, text):
         """
-        Splits text into sentences while preserving all whitespace and paragraph structure.
+        Splits text into sentences while preserving paragraph structure.
         """
-        # Preserve all newlines by replacing them temporarily
-        text = text.replace('\n\n', ' <PARAGRAPH> ')
-        text = text.replace('\n', ' <NEWLINE> ')
+        # Replace consecutive newlines with a special marker
+        text = text.replace('\n\n', ' <PARAGRAPH> ').replace('\n', ' <NEWLINE> ')
         
-        # Process the text with spaCy
         doc = self.spacy_nlp(text)
         sentences = []
         
         for sent in doc.sents:
             sent_text = sent.text.strip()
-            if '<PARAGRAPH>' in sent_text:
-                # Split and handle paragraph breaks
-                parts = sent_text.split('<PARAGRAPH>')
-                for i, part in enumerate(parts):
-                    part = part.replace('<NEWLINE>', '\n').strip()
-                    if part:
-                        sentences.append(part)
-                    if i < len(parts) - 1:
-                        sentences.append('\n\n')  # Add paragraph break
-            else:
-                # Handle regular sentences with potential line breaks
-                sent_text = sent_text.replace('<NEWLINE>', '\n')
-                if sent_text:
-                    sentences.append(sent_text)
+            if not sent_text:
+                continue
+            
+            # Process the sentence
+            processed_text = sent_text.replace('<PARAGRAPH>', '\n\n').replace('<NEWLINE>', '\n')
+            if processed_text.strip():  # Only add if there's actual content
+                sentences.append(processed_text)
         
         return sentences
 
