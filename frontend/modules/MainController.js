@@ -136,36 +136,10 @@ class MainController {
       console.log('Successfully loaded saved data');
     }
 
-    const analyzeButton = document.getElementById("analyzeButton");
     const uploadButton = document.getElementById("uploadButton");
     const barChartButtons = document.getElementById("barChartButtons");
     const resetButton = document.getElementById("resetButton");
     const changeSentenceButton = document.getElementById("changeSentenceButton");
-    
-    analyzeButton.addEventListener("click", () => {
-      const text = this.textEditorModule.getText().trim();
-      if (!text) {
-        alert("Please enter some text to analyze.");
-        return;
-      }
-      this.setLoading(true);
-      this.dataService.analyzeText(text)
-        .then(data => {
-          if (data.results) {
-            this.data = data.results;
-            this.updateEmotions();
-            this.updateVisualizations();
-            this.updateSentenceList();
-          } else {
-            alert("No results returned from analysis.");
-          }
-        })
-        .catch(error => {
-          console.error("Error analyzing text:", error);
-          alert("An error occurred during analysis.");
-        })
-        .finally(() => this.setLoading(false));
-    });
     
     uploadButton.addEventListener("click", () => {
       const fileInput = document.createElement("input");
@@ -273,10 +247,8 @@ class MainController {
   
   setLoading(isLoading) {
     const loadingIndicator = document.getElementById("loadingIndicator");
-    const analyzeButton = document.getElementById("analyzeButton");
     const uploadButton = document.getElementById("uploadButton");
     loadingIndicator.style.display = isLoading ? "block" : "none";
-    analyzeButton.disabled = isLoading;
     uploadButton.disabled = isLoading;
   }
   
@@ -577,8 +549,9 @@ class MainController {
           this.updateSentenceList({
             preserveCursor: true // Set this option to true to preserve cursor position
           });
-          
-          console.log("Auto-analysis complete");
+
+          // Print the full JSON result as an object
+          console.log("Dynamic analysis JSON result:", data);          
         }
       })
       .catch(error => {
