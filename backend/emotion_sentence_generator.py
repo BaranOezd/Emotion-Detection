@@ -1,19 +1,27 @@
+import os
 import openai
 import json
 import numpy as np
 import asyncio
 import aiohttp
 import time
-from backend.Emotions_analyzer import EmotionsAnalyzer
+from backend.Emotion_analyzer import EmotionAnalyzer
+from dotenv import load_dotenv
+from pathlib import Path
 
-# Read the OpenAI API key from the file
-with open(r"C:\Users\seyit\Desktop\openAIToken.txt", "r") as file:
-    api_key = file.read().strip()
+env_path = Path(__file__).resolve().parent.parent / ".env"
+print(f"Looking for .env file at: {env_path}")
 
-if not api_key:
-    raise Exception("The OPENAI_API_KEY is not set in the file.")
+# Step 2: Load the .env file
+load_dotenv(dotenv_path=env_path, override=True)
 
-# Set the OpenAI API key for authentication
+# Step 3: Get and sanitize the API key
+api_key = os.getenv("OPENAI_API_KEY", "").strip().replace('\ufeff', '')
+
+# Step 4: Check and print for debugging
+if not api_key.startswith("sk-"):
+    raise Exception(f"Invalid API key loaded")
+
 openai.api_key = api_key
 
 class SentenceGenerator:
@@ -29,13 +37,30 @@ class SentenceGenerator:
         self.max_attempts = 3  # Fixed maximum attempts
         self.rmse_target = 0.10  # Target for acceptable emotion match
         self.emotion_threshold = 0.12  # Threshold for individual emotion matches
-        self.analyzer = analyzer if analyzer else EmotionsAnalyzer(model_name="SamLowe/roberta-base-go_emotions")
+        self.analyzer = analyzer if analyzer else EmotionAnalyzer(model_name="SamLowe/roberta-base-go_emotions")
         self.batch_size = 30  # Number of sentences per batch
         self.keep_best = 5    # Number of best sentences to keep
 
     def _log(self, message):
         """Simple console logging"""
         print(message)
+
+    def _process_batch_results(self, batch, user_top_emotions):
+        """Process and analyze batch results."""
+        batch_results = []
+        for sentence in batch:
+            emotions = self.analyzer.analyze_emotions(sentence)
+            rmse, matches = self._calculate_rmse(user_top_emotions, emotions)
+            batch_results.append((sentence, emotions, rmse))
+        
+        # Sort by RMSE
+        batch_results.sort(key=lambda x: x[2])
+        return batch_results
+
+    def _normalize_top_emotions(self, emotions, top_n=3):
+        """Normalize top emotions to two decimal places."""
+        top_emotions = dict(sorted(emotions.items(), key=lambda x: x[1], reverse=True)[:top_n])
+        return {k: round(v, 2) for k, v in top_emotions.items()}
 
     async def _generate_sentences_batch(self, sentences, user_top_emotions):
         """Generate multiple sentences concurrently"""
@@ -71,7 +96,7 @@ class SentenceGenerator:
         target_emotions = self._normalize_emotion_keys(new_emotion_levels)
         
         # Identify the user's top three emotions from the input
-        user_top_emotions = {k: round(v, 2) for k, v in sorted(target_emotions.items(), key=lambda x: x[1], reverse=True)[:3]}
+        user_top_emotions = self._normalize_top_emotions(target_emotions)
         print(f"User's top three emotions (normalized): {user_top_emotions}")
         
         # Initialize the batch system
@@ -97,16 +122,12 @@ class SentenceGenerator:
                 loop.close()
             
             print("\nAnalyzing emotions for generated sentences...")
-            batch_results = []
+            batch_results = self._process_batch_results(batch, user_top_emotions)
 
-            # Process and analyze sentences
-            for sentence in batch:
-                emotions = self.analyzer.analyze_emotions(sentence)
-                rmse, matches = self._calculate_rmse(user_top_emotions, emotions)
-                batch_results.append((sentence, emotions, rmse))
-            
-            # Sort by RMSE
-            batch_results.sort(key=lambda x: x[2])
+            # Ensure batch_results is not empty before proceeding
+            if not batch_results:
+                self._log("\nNo sentences were successfully generated or analyzed in this batch.")
+                continue
             
             # Update overall best if this batch has a better sentence
             if batch_results[0][2] < overall_best_rmse:
@@ -183,20 +204,6 @@ class SentenceGenerator:
             except Exception as e:
                 print(f"Error parsing OpenAI response: {str(e)}")
                 return original_sentence
-
-    def _emotions_match(self, reference_emotions, actual_emotions):
-        # Normalize actual emotions to two decimal places
-        normalized_actual_emotions = {k: round(v, 2) for k, v in actual_emotions.items()}
-        
-        # Check if any emotion deviates more than the threshold
-        for emotion, target_value in reference_emotions.items():
-            actual_value = normalized_actual_emotions.get(emotion, 0)
-            deviation = abs(target_value - actual_value)
-            if deviation > self.emotion_threshold:
-                return False
-            
-        print(f"\nAll emotions within {self.emotion_threshold * 100}% deviation threshold")
-        return True
 
     def _generate_feedback(self, target_emotions, actual_emotions):
         feedback_parts = []

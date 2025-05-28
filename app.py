@@ -1,14 +1,14 @@
 import os
 import traceback
 from flask import Flask, render_template, send_from_directory, request, jsonify
-from backend.Emotions_analyzer import EmotionsAnalyzer
+from backend.Emotion_analyzer import EmotionAnalyzer
 from backend.emotion_sentence_generator import SentenceGenerator
 
 # Initialize Flask app
 app = Flask(__name__, template_folder='./frontend', static_folder='./frontend')
 
 # Initialize analyzer and sentence generator with optimized parameters
-analyzer = EmotionsAnalyzer()
+analyzer = EmotionAnalyzer()
 sentence_generator = SentenceGenerator(
     model_name="gpt-4o-mini",
     max_tokens=100,
@@ -60,14 +60,14 @@ def modify_sentence():
         print("Received data for modification:", data)
         original_sentence = data.get("sentence", "").strip()
         new_emotion_levels = data.get("new_emotions")
-        
+
         if not original_sentence or not new_emotion_levels:
             return jsonify({"error": "Sentence and new_emotions must be provided"}), 400
 
         print("/modify endpoint triggered")
         # Generate the modified sentence
         new_sentence = sentence_generator.generate_modified_sentence(original_sentence, new_emotion_levels)
-        
+
         # Analyze the emotions of the generated sentence
         actual_emotions = analyzer.analyze_emotions(new_sentence)
         

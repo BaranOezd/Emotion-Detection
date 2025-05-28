@@ -6,7 +6,7 @@ from functools import lru_cache
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from multiprocessing import cpu_count
 
-class EmotionsAnalyzer:
+class EmotionAnalyzer:
     def __init__(self, model_name="SamLowe/roberta-base-go_emotions"):
         self.model_name = model_name
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
