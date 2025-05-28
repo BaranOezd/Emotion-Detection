@@ -19,6 +19,3 @@ __pycache__/
 # OS-generated files
 .DS_Store
 Thumbs.db
-
-# Node.js-related files (if applicable)
-node_modules/
