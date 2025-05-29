@@ -295,14 +295,11 @@ button.loading::after {
 
 #barChartButtons {
   grid-area: barChartButtons;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.3s ease, visibility 0.3s ease;
-}
-
-#barChartButtons.visible {
-  opacity: 1;
-  visibility: visible;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-xs);
+  margin: var(--space-xs) 0;
 }
 
 /* Divider and utility elements */
@@ -365,4 +362,8 @@ body.analyzing #analyzeButton::after {
   100% {
     transform: translateX(100%);
   }
+}
+
+#toggleAIButton {
+  margin-left: var(--space-xs);
 }

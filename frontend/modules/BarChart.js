@@ -5,10 +5,15 @@ export default class BarChartModule {
     this.emotions = emotions;
     this.selectedEmotions = [];
     this.tempEmotionValues = null; // New property to store temporary emotion values
+    this.aiEnabled = true; // Track whether AI modifications are enabled
   }
 
   clear() {
     d3.select(this.containerSelector).html("");
+  }
+
+  setAIEnabled(enabled) {
+    this.aiEnabled = enabled; // Update AI modification state
   }
 
   render(sentenceData, { onReset, onChangeSentence, skipAnimation = false } = {}) {
@@ -92,9 +97,11 @@ export default class BarChartModule {
     // Define drag behavior for interactive score adjustment.
     const drag = d3.drag()
       .on("start", function (event, d) {
+        if (!this.aiEnabled) return; // Cancel drag if AI modifications are disabled
         d3.select(this).style("opacity", 0.7);
       })
       .on("drag", (event, d) => {
+        if (!this.aiEnabled) return; // Cancel drag if AI modifications are disabled
         let newX = Math.max(0, Math.min(event.x, width));
         let newScore = x.invert(newX);
         newScore = Math.round(newScore * 20) / 20;
@@ -131,6 +138,7 @@ export default class BarChartModule {
           .style("top", (event.pageY - 20) + "px");
       })
       .on("end", function () {
+        if (!this.aiEnabled) return; // Cancel drag if AI modifications are disabled
         d3.select(this).style("opacity", 1);
       });
   
@@ -162,7 +170,7 @@ export default class BarChartModule {
         tooltip.style("opacity", 0);
         d3.select(this).style("stroke", "none");
       })
-      .call(drag);
+      .call(drag); // Attach drag behavior
   
     // Only animate if not skipping animation
     if (!skipAnimation) {
