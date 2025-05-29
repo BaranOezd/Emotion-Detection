@@ -5,7 +5,7 @@ import numpy as np
 import asyncio
 import aiohttp
 import time
-from backend.Emotion_analyzer import EmotionAnalyzer
+from backend.emotion_analyzer import EmotionAnalyzer
 from dotenv import load_dotenv
 from pathlib import Path
 
