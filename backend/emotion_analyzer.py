@@ -16,7 +16,8 @@ class EmotionAnalyzer:
         self.batch_size = 16
         self.cpu_threshold = 70
         self.process_delay = 0.1
-        self.thread_executor = ThreadPoolExecutor(max_workers=min(2, cpu_count() - 1))
+        max_workers = max(1, cpu_count() - 1)
+        self.thread_executor = ThreadPoolExecutor(max_workers=max_workers)        
         self._cache = {}
         self.tokenizer = None  # Initialize tokenizer as None
         self.model = None      # Initialize model as None
