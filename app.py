@@ -1,8 +1,8 @@
 import os
 import traceback
 from flask import Flask, render_template, send_from_directory, request, jsonify
-from backend.Emotion_analyzer import EmotionAnalyzer
-from backend.emotion_sentence_generator import SentenceGenerator
+from backend.emotion_analyzer import EmotionAnalyzer
+from backend.sentence_generator import SentenceGenerator
 
 # Initialize Flask app
 app = Flask(__name__, template_folder='./frontend', static_folder='./frontend')
