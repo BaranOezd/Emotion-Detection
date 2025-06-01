@@ -25,7 +25,7 @@ if not api_key.startswith("sk-"):
 openai.api_key = api_key
 
 class SentenceGenerator:
-    def __init__(self, model_name="gpt-4o-mini", max_tokens=100, analyzer=None):
+    def __init__(self, model_name="gpt-4.1-nano", max_tokens=100, analyzer=None):
         """
         Initialize the generator with the specified OpenAI model.
         :param model_name: The name of the OpenAI model to use.
