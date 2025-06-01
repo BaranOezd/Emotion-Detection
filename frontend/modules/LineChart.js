@@ -52,9 +52,7 @@ export default class LineChartModule {
       rowHeight = Math.min(maxRowHeight, targetHeight / data.length);
       // Ensure row height is at least the minimum
       rowHeight = Math.max(minRowHeight, rowHeight);
-      
-      console.log(`LineChart: ${data.length} sentences, rowHeight=${rowHeight}px, availableHeight=${availableHeight}px`);
-    }
+          }
     
     // Calculate total chart height based on row height and data length
     const dynamicChartHeight = data.length > 0 
@@ -310,52 +308,47 @@ export default class LineChartModule {
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
     }
-    
-    // Create a new resize observer to handle container size changes
+
     this.resizeObserver = new ResizeObserver(entries => {
       for (let entry of entries) {
         const containerHeight = entry.contentRect.height;
         const containerWidth = entry.contentRect.width;
-        
-        // Only update if container dimensions have changed significantly
-        if (Math.abs(containerHeight - this._lastContainerHeight) > 10 ||
-            Math.abs(containerWidth - this._lastContainerWidth) > 10) {
-          
-          // Store new dimensions
+
+        // Log resize events for debugging
+        //console.log("Resize detected:", { height: containerHeight, width: containerWidth });
+
+        // Only update if container dimensions have changed significantly (threshold: 20px)
+        if (Math.abs(containerHeight - this._lastContainerHeight) > 20 ||
+            Math.abs(containerWidth - this._lastContainerWidth) > 20) {
+
           this._lastContainerHeight = containerHeight;
           this._lastContainerWidth = containerWidth;
-          
-          // Calculate new height that uses the full available space
+
           const newHeight = Math.max(initialHeight, containerHeight);
-          
-          // Update the SVG parent's height to fill the available space
-          // Fix: Access the SVG element correctly (chartSvg is a group inside SVG)
-          const svgElement = chartSvg.node().parentNode; // Get the SVG element
+
+          const svgElement = chartSvg.node().parentNode;
           if (svgElement) {
-            d3.select(svgElement) // Create a D3 selection from the SVG element
+            d3.select(svgElement)
               .style("height", `${newHeight}px`)
               .attr("height", newHeight);
           }
 
-          // If we have few data points, trigger a complete re-render to better use the space
-          if (this.data && this.data.length > 0 && this.data.length < 10 && 
-              containerHeight > initialHeight + 50) { // Only re-render if significant height change
-            // Use setTimeout to avoid multiple rapid re-renders
-            clearTimeout(this._resizeTimer);
-            this._resizeTimer = setTimeout(() => {
+          // Debounce re-render to avoid frequent updates
+          clearTimeout(this._resizeTimer);
+          this._resizeTimer = setTimeout(() => {
+            if (this.data && this.data.length > 0 && this.data.length < 10 &&
+                containerHeight > initialHeight + 50) {
               console.log("LineChart: Container resize triggered re-render");
               this.render(this.data);
-            }, 300);
-          }
+            }
+          }, 1500); // Increased debounce delay to 1500ms for significant slowdown
         }
       }
     });
     
-    // Store initial dimensions
     this._lastContainerHeight = chartContainer.node().clientHeight;
     this._lastContainerWidth = chartContainer.node().clientWidth;
-    
-    // Start observing the container
+
     this.resizeObserver.observe(wrapper.node());
   }
 
