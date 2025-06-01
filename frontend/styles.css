@@ -224,6 +224,7 @@ button:disabled {
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
+  color: #333; /* Dark text for disabled state */
 }
 
 button.generating {
@@ -236,33 +237,9 @@ button.generating:not(.loading) {
 }
 
 button.loading {
-  background-color: var(--color-primary);
+  background-color: var(--color-disabled);
   cursor: wait;
-  color: transparent;  /* Hide text while loading */
-}
-
-button.loading::after {
-  content: '';
-  position: absolute;
-  width: 16px;
-  height: 16px;
-  top: 50%;
-  left: 50%;
-  margin: -8px 0 0 -8px;
-  border: 2px solid transparent;
-  border-top-color: var(--color-bg);
-  border-right-color: var(--color-bg);
-  border-radius: 50%;
-  animation: button-loading-spinner 0.8s linear infinite;
-}
-
-@keyframes button-loading-spinner {
-  from {
-    transform: rotate(0turn);
-  }
-  to {
-    transform: rotate(1turn);
-  }
+  color: #333; /* Dark text color for better visibility */
 }
 
 /* Hide default spinner when bar chart is loading */
@@ -366,4 +343,12 @@ body.analyzing #analyzeButton::after {
 
 #toggleAIButton {
   margin-left: var(--space-xs);
+}
+
+/* Countdown-specific styling */
+button.countdown-active {
+  background-color: #f8f9fa !important;
+  color: #495057 !important;
+  border: 2px solid var(--color-primary) !important;
+  font-weight: bold !important;
 }

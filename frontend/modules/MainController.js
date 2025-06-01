@@ -404,67 +404,74 @@ class MainController {
   
   handleChangeSentence(sentenceData) {
     const currentIndex = sentenceData.index;
-    
+
     // Store the original sentence if not already stored
     if (!sentenceData.originalSentence) {
       sentenceData.originalSentence = sentenceData.sentence;
     }
-    
+
     // Disable all interactive elements during generation
     this.setGenerating(true);
-    
+
+    // Start countdown for 30 seconds
+    this.currentCountdownInterval = this.startButtonCountdown(30);
+
     // Use the temporary emotion values from BarChart instead of sentenceData.emotions
     const emotionsToSend = this.barChartModule.getCurrentEmotionValues();
-    
+
     // Create a copy of sentenceData with the temporary emotion values
     const dataToSend = {
       ...sentenceData,
       emotions: emotionsToSend
     };
-    
+
     this.dataService.modifySentence(dataToSend)
       .then(data => {
         if (data.error) {
           throw new Error(data.error);
         }
+        
+        // Stop countdown when sentence changes
+        this.stopCountdown();
+        
         // Update the data with the new values from the backend
         sentenceData.sentence = data.new_sentence;
-        sentenceData.emotions = data.emotion_levels; // Use the real emotion values returned by the generator
+        sentenceData.emotions = data.emotion_levels;
         sentenceData.index = currentIndex;
         this.data[currentIndex] = sentenceData;
-        
+
         // Save the entire data array to localStorage
         localStorage.setItem('analysisData', JSON.stringify(this.data));
-        
+
         // Re-enable interactive elements
         this.setGenerating(false);
-        
+
         // Clear existing highlight
         this.lineChartModule.clearHighlight();
-        
+
         // Update the line chart with new data
         this.lineChartModule.render(this.data);
-        
+
         // Make sure to re-highlight the current sentence
         this.lineChartModule.highlightSentence(currentIndex);
-        
+
         // Re-render the sentence list with the same sentence selected.
         this.textEditorModule.renderSentences(this.data, currentIndex, (selectedIndex) => {
           this.lastSelectedIndex = selectedIndex;
-          
+
           const selectedSentence = this.data[selectedIndex];
           selectedSentence.index = selectedIndex;
-          
+
           // Use skipAnimation true ONLY when it's the same sentence after a change
           const skipAnimation = selectedIndex === currentIndex;
-          
+
           // Render the bar chart with the updated real emotion values
           this.barChartModule.render(selectedSentence, {
             onReset: this.onReset.bind(this),
             onChangeSentence: this.handleChangeSentence.bind(this),
             skipAnimation: skipAnimation
           });
-          
+
           // Make sure highlight is applied after text editor rendering
           this.lineChartModule.highlightSentence(selectedIndex);
         });
@@ -472,35 +479,71 @@ class MainController {
       .catch(error => {
         console.error("Error modifying sentence:", error);
         alert("An error occurred while modifying the sentence: " + error.message);
+        this.stopCountdown();
         this.setGenerating(false);
       });
   }
 
-  setGenerating(isGenerating) {
-    const buttons = document.querySelectorAll('button');
-    const barChartBars = document.querySelectorAll('.bar');
-    const changeSentenceButton = document.getElementById("changeSentenceButton");
+  /**
+   * Start a countdown directly on the button
+   * @param {number} seconds - Countdown duration in seconds
+   * @returns {number} - The interval ID
+   */
+  startButtonCountdown(seconds) {
+    const changeButton = document.getElementById("changeSentenceButton");
+    let remainingTime = seconds;
+
+    const updateButtonText = () => {
+      if (remainingTime < 0) {
+        this.stopCountdown();
+        return;
+      }
+      changeButton.textContent = `Processing (${remainingTime}s)`;
+      changeButton.classList.add('countdown-active'); // Add class for styling
+      remainingTime -= 1;
+    };
+
+    changeButton.disabled = true;
+    updateButtonText(); // Initialize button text
+    return setInterval(updateButtonText, 1000);
+  }
+
+  /**
+   * Stop the countdown and reset the button
+   */
+  stopCountdown() {
+    const changeButton = document.getElementById("changeSentenceButton");
     
-    document.body.classList.toggle('bar-chart-loading', isGenerating);
-    
-    buttons.forEach(button => {
-        button.disabled = isGenerating;
-        button.classList.toggle('generating', isGenerating);
-    });
-    
-    // Add loading animation only to the change sentence button
-    if (changeSentenceButton) {
-        changeSentenceButton.classList.toggle('loading', isGenerating);
+    if (this.currentCountdownInterval) {
+      clearInterval(this.currentCountdownInterval);
+      this.currentCountdownInterval = null;
     }
     
-    barChartBars.forEach(bar => {
-        bar.style.pointerEvents = isGenerating ? 'none' : 'auto';
+    changeButton.textContent = "Change";
+    changeButton.disabled = false;
+    changeButton.classList.remove('countdown-active'); // Remove styling class
+  }
+
+  setGenerating(isGenerating) {
+    const buttons = document.querySelectorAll('button');  
+    const barChartBars = document.querySelectorAll('.bar');
+    const changeSentenceButton = document.getElementById("changeSentenceButton");
+
+    document.body.classList.toggle('bar-chart-loading', isGenerating);
+
+    buttons.forEach(button => {
+      button.disabled = isGenerating;
+      button.classList.toggle('generating', isGenerating);
     });
     
-    // Update loading indicator only if not a bar chart operation
+    // Remove spinning effect logic
+    barChartBars.forEach(bar => {
+      bar.style.pointerEvents = isGenerating ? 'none' : 'auto';
+    });
+
     const loadingIndicator = document.getElementById("loadingIndicator");
     if (loadingIndicator && !isGenerating) {
-        loadingIndicator.style.display = "none";
+      loadingIndicator.style.display = "none";
     }
   }
 
