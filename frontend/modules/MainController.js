@@ -495,11 +495,13 @@ class MainController {
 
     const updateButtonText = () => {
       if (remainingTime < 0) {
-        this.stopCountdown();
-        return;
+        // Stay at 0 if processing takes longer than countdown
+        changeButton.textContent = `Processing (0s)`;
+        changeButton.classList.add('countdown-active');
+        return; // Don't clear interval, keep showing 0
       }
       changeButton.textContent = `Processing (${remainingTime}s)`;
-      changeButton.classList.add('countdown-active'); // Add class for styling
+      changeButton.classList.add('countdown-active');
       remainingTime -= 1;
     };
 
