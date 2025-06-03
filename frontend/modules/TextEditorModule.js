@@ -14,13 +14,11 @@ export default class TextEditorModule {
     // Try to restore content from localStorage if it exists
     const savedContent = localStorage.getItem('editorContent');
     if (savedContent) {
-      // Process any special tags before setting content
-      this.editor.innerHTML = this._processSpecialTags(savedContent);
+      this.editor.innerHTML = savedContent;
       console.log('Restored editor content from localStorage');
     } else {
       // Default content if nothing is saved
-      const sampleText = "Enter some text here for analysis.";
-      this.editor.innerHTML = this._preserveWhitespace(sampleText);
+      this.editor.innerHTML = "Enter some text here for analysis.";
     }
     
     // Add event listeners
@@ -29,59 +27,10 @@ export default class TextEditorModule {
   }
   
   /**
-   * Process special tags like <NEWLINE> and <PARAGRAPH> in text
-   * @param {string} text - Text containing special tags
-   * @returns {string} - Text with special tags converted to HTML elements
-   */
-  _processSpecialTags(text) {
-    if (!text) return '';
-    
-    // Handle more variants of these tags with flexible spacing and case insensitivity
-    
-    // Handle HTML-encoded versions
-    text = text.replace(/&lt;\s*PARAGRAPH\s*&gt;/gi, '<br><br>');
-    text = text.replace(/&lt;\s*NEWLINE\s*&gt;/gi, '<br>');
-    
-    // Handle raw tags with various spacing patterns
-    text = text.replace(/\s*<\s*PARAGRAPH\s*>\s*/gi, '<br><br>');
-    text = text.replace(/\s*<\s*NEWLINE\s*>\s*/gi, '<br>');
-    
-    // Fix the case where < and tag name have a space between them
-    text = text.replace(/\s*<\s+PARAGRAPH\s*>\s*/gi, '<br><br>');
-    text = text.replace(/\s*<\s+NEWLINE\s*>\s*/gi, '<br>');
-    
-    // Handle bare tags (ensure these are last to catch any remaining instances)
-    text = text.replace(/<PARAGRAPH>/gi, '<br><br>');
-    text = text.replace(/<NEWLINE>/gi, '<br>');
-    
-    return text;
-  }
-  
-  /**
-   * Convert newlines to <br> tags and preserve consecutive white spaces.
-   * @param {string} text - The plain text to be converted.
-   * @returns {string} - The converted HTML string.
-   */
-  _preserveWhitespace(text) {
-    if (!text) return '';
-    text = text.replace(/<br\s*\/?>/gi, '\n');
-    let preservedText = text.replace(/\n/g, '<br>');
-    preservedText = preservedText.replace(/ {2}/g, ' &nbsp;');
-    return preservedText;
-  }
-  
-  /**
    * Handle input events in the text editor with debouncing
    * @private
    */
   _handleInput(event) {
-    // Clean any paragraph tags that might have been entered or pasted
-    const content = this.editor.innerHTML;
-    if (content.includes('PARAGRAPH') || content.includes('< PARAGRAPH') || content.match(/[<&].*PARAGRAPH/i)) {
-      // Process content to replace all variants of PARAGRAPH tags
-      this.editor.innerHTML = this._processSpecialTags(content);
-    }
-    
     // Save to localStorage
     localStorage.setItem('editorContent', this.editor.innerHTML);
     
@@ -105,32 +54,19 @@ export default class TextEditorModule {
   renderSentences(results, selectedIndex = null, onSentenceSelect = () => {}, options = {}) {
     if (!this.editor || !results || results.length === 0) return;
     
-    // Clean any PARAGRAPH tags from the results data - handle more variants
-    results = results.map(item => {
-      if (item.sentence) {
-        // Remove all variations of the PARAGRAPH tag
-        item.sentence = item.sentence.replace(/<\s*PARAGRAPH\s*>/gi, ' ');
-        item.sentence = item.sentence.replace(/< PARAGRAPH>/gi, ' ');
-        item.sentence = item.sentence.replace(/<\s+PARAGRAPH>/gi, ' ');
-      }
-      return item;
-    });
-    
     // Build the HTML for each sentence
     const updatedContent = results.map((item, index) => {
       const selectedClass = (selectedIndex !== null && Number(selectedIndex) === index) ? " selected" : "";
       const sentenceText = item.sentence || '';
-      const processedText = this._processSpecialTags(sentenceText);
-      const sentenceHTML = this._preserveWhitespace(processedText);
       
       return `<span class="highlighted-sentence${selectedClass}" 
                     data-index="${index}" 
                     tabindex="0" 
                     role="button" 
                     aria-label="Sentence ${index + 1}">
-                ${sentenceHTML}
+                ${sentenceText}
               </span>`;
-    }).join(""); 
+    }).join(" "); 
     
     this.editor.innerHTML = updatedContent;
     

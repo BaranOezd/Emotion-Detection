@@ -100,23 +100,15 @@ class EmotionAnalyzer:
 
     def split_text_into_sentences(self, text):
         """
-        Splits text into sentences while preserving paragraph structure.
+        Splits text into sentences using spaCy.
         """
-        # Replace consecutive newlines with a special marker
-        text = text.replace('\n\n', ' <PARAGRAPH> ').replace('\n', ' <NEWLINE> ')
-        
         doc = self.spacy_nlp(text)
         sentences = []
         
         for sent in doc.sents:
             sent_text = sent.text.strip()
-            if not sent_text:
-                continue
-            
-            # Process the sentence
-            processed_text = sent_text.replace('<PARAGRAPH>', '\n\n').replace('<NEWLINE>', '\n')
-            if processed_text.strip():  # Only add if there's actual content
-                sentences.append(processed_text)
+            if sent_text and not sent_text.isspace():
+                sentences.append(sent_text)
         
         return sentences
 
