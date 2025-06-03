@@ -180,6 +180,26 @@ svg {
   line-height: 1.5;
 }
 
+/* Paragraph styling */
+.text-editor .paragraph {
+  margin-bottom: 1em;
+}
+
+.text-editor .paragraph:last-child {
+  margin-bottom: 0;
+}
+
+.text-editor .linebreak {
+  height: 1em;
+  min-height: 1em;
+  display: block;
+}
+
+.text-editor .paragraph-break {
+  height: 1em;
+  display: block;
+}
+
 .text-editor:focus {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 1px rgba(0, 123, 255, 0.25);

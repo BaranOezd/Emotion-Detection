@@ -77,26 +77,91 @@ class EmotionAnalyzer:
 
     def analyze_emotions(self, sentence):
         """Analyze a single sentence for emotion scores."""
+        # Skip analysis for empty content
+        if not sentence or not sentence.strip() or sentence.strip() == '\n':
+            return {}
         return self._process_batch([sentence])[0]
 
+    def preserve_text_structure(self, text):
+        """Process text while preserving original structure including paragraph breaks"""
+        # Split text into paragraphs while preserving empty lines
+        paragraphs = text.split('\n')
+        
+        processed_paragraphs = []
+        sentence_data = []
+        sentence_id = 0
+        
+        for para_idx, paragraph in enumerate(paragraphs):
+            if paragraph.strip():  # Non-empty paragraph
+                doc = self.spacy_nlp(paragraph)
+                processed_sentences = []
+                
+                for sent in doc.sents:
+                    sentence_text = sent.text.strip()
+                    # Skip empty sentences
+                    if sentence_text and sentence_text != '\n' and not sentence_text.isspace():
+                        # Use existing emotion analysis
+                        emotions = self.analyze_emotions(sentence_text)
+                        
+                        # Only add if emotions were successfully analyzed
+                        if emotions:
+                            sentence_data.append({
+                                'sentence': sentence_text,
+                                'emotions': emotions,
+                                'paragraph_id': para_idx,
+                                'sentence_id': sentence_id,
+                                'start_char': sent.start_char,
+                                'end_char': sent.end_char
+                            })
+                            
+                            processed_sentences.append({
+                                'id': sentence_id,
+                                'text': sentence_text
+                            })
+                            sentence_id += 1
+                
+                if processed_sentences:  # Only add paragraph if it has valid sentences
+                    processed_paragraphs.append({
+                        'type': 'paragraph',
+                        'sentences': processed_sentences,
+                        'original_text': paragraph
+                    })
+            else:  # Empty line - preserve as line break
+                processed_paragraphs.append({
+                    'type': 'linebreak',
+                    'text': ''
+                })
+        
+        return {
+            'structured_text': processed_paragraphs,
+            'sentences': sentence_data
+        }
+
     def analyze_dynamic_text(self, text):
-        """Analyze a block of text dynamically."""
-        sentences = self.split_text_into_sentences(text)
-        if not sentences:
+        """Analyze a block of text dynamically with structure preservation."""
+        if not text or not text.strip():
             return {"results": [], "progress": {"processed": 0, "total": 0}}
-
-        # Filter out standalone newlines and whitespace
-        valid_sentences = []
-        for sentence in sentences:
-            # Skip if sentence is just newlines or whitespace
-            if sentence.strip() and not sentence.isspace() and sentence != '\n' and sentence != '\n\n':
-                valid_sentences.append(sentence)
-
-        if not valid_sentences:
+        
+        # Use structured text processing
+        structured_result = self.preserve_text_structure(text)
+        
+        if not structured_result['sentences']:
             return {"results": [], "progress": {"processed": 0, "total": 0}}
-
-        results = self._process_batch_parallel(valid_sentences)
-        return {"results": [{"sentence": sent, "emotions": emo} for sent, emo in zip(valid_sentences, results)]}
+        
+        # Return results with both flat and structured formats
+        results = []
+        for sentence_data in structured_result['sentences']:
+            results.append({
+                'sentence': sentence_data['sentence'],
+                'emotions': sentence_data['emotions'],
+                'paragraph_id': sentence_data['paragraph_id']  # Include paragraph info
+            })
+        
+        return {
+            "results": results,
+            "structured_data": structured_result,
+            "progress": {"processed": len(results), "total": len(results)}
+        }
 
     def split_text_into_sentences(self, text):
         """

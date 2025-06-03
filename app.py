@@ -43,8 +43,11 @@ def analyze():
             return jsonify({"error": "No valid results could be generated"}), 400
 
         print(f"Analysis complete, returning {len(analysis['results'])} results")
+        
+        # Include structured data in the response
         return jsonify({
-            "results": analysis["results"]
+            "results": analysis["results"],
+            "structured_data": analysis.get("structured_data", {})
         })
         
     except Exception as e:

@@ -559,6 +559,8 @@ class MainController {
           this.updateVisualizations();
           this.updateSentenceList();
           console.log('Restored saved data from localStorage');
+          console.log("Dynamic analysis JSON result:", this.data);          
+
           return true;
         }
       }

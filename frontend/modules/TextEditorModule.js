@@ -49,32 +49,102 @@ export default class TextEditorModule {
   }
   
   /**
-   * Render the sentences with optional highlighting
+   * Render the sentences with optional highlighting and paragraph structure
    */
   renderSentences(results, selectedIndex = null, onSentenceSelect = () => {}, options = {}) {
     if (!this.editor || !results || results.length === 0) return;
     
-    // Build the HTML for each sentence
+    // Check if we have structured data available
+    if (results.structured_data && results.structured_data.structured_text) {
+      this._renderStructuredText(results, selectedIndex, onSentenceSelect);
+    } else {
+      this._renderFlatText(results, selectedIndex, onSentenceSelect);
+    }
+    
+    // Save to localStorage
+    localStorage.setItem('editorContent', this.editor.innerHTML);
+    localStorage.setItem('analysisData', JSON.stringify(results));
+    
+    // Execute after render callback if provided
+    setTimeout(() => {
+      if (typeof options.afterRender === 'function') {
+        options.afterRender();
+      }
+    }, 10);
+  }
+
+  /**
+   * Render text with preserved paragraph structure
+   */
+  _renderStructuredText(results, selectedIndex, onSentenceSelect) {
+    const structuredText = results.structured_data.structured_text;
+    const sentences = results.results;
+    let html = '';
+    let sentenceIndex = 0;
+    
+    // Create a mapping from sentence index to sentence
+    const sentenceMap = {};
+    sentences.forEach((s, idx) => {
+      sentenceMap[idx] = s;
+    });
+    
+    structuredText.forEach(element => {
+      if (element.type === 'paragraph') {
+        html += '<div class="paragraph">';
+        element.sentences.forEach(sentenceInfo => {
+          const idx = sentenceInfo.id;
+          if (sentenceMap[idx]) {
+            const selectedClass = (selectedIndex !== null && selectedIndex === idx) ? " selected" : "";
+            html += `<span class="highlighted-sentence${selectedClass}" 
+                          data-index="${idx}" 
+                          tabindex="0" 
+                          role="button" 
+                          aria-label="Sentence ${idx + 1}">
+                      ${sentenceMap[idx].sentence}
+                    </span> `;
+          }
+        });
+        html += '</div>';
+      } else if (element.type === 'linebreak') {
+        html += '<div class="linebreak">&nbsp;</div>';
+      }
+    });
+    
+    this.editor.innerHTML = html;
+    this._attachSentenceListeners(onSentenceSelect);
+  }
+  
+  /**
+   * Render flat text (legacy format)
+   */
+  _renderFlatText(results, selectedIndex, onSentenceSelect) {
     const updatedContent = results.map((item, index) => {
       const selectedClass = (selectedIndex !== null && Number(selectedIndex) === index) ? " selected" : "";
       const sentenceText = item.sentence || '';
       
-      return `<span class="highlighted-sentence${selectedClass}" 
+      // Group by paragraphs if paragraph_id is available
+      const paraStart = index > 0 && 
+                       item.paragraph_id !== undefined && 
+                       results[index-1].paragraph_id !== item.paragraph_id ? 
+                       '<div class="paragraph-break"></div>' : '';
+      
+      return `${paraStart}<span class="highlighted-sentence${selectedClass}" 
                     data-index="${index}" 
                     tabindex="0" 
                     role="button" 
                     aria-label="Sentence ${index + 1}">
                 ${sentenceText}
               </span>`;
-    }).join(" "); 
+    }).join(" ");
     
     this.editor.innerHTML = updatedContent;
-    
-    // Save to localStorage
-    localStorage.setItem('editorContent', updatedContent);
-    localStorage.setItem('analysisData', JSON.stringify(results));
-    
-    // Attach event listeners to each sentence span
+    this._attachSentenceListeners(onSentenceSelect);
+  }
+
+  /**
+   * Attach click listeners to sentence elements
+   */
+  _attachSentenceListeners(onSentenceSelect) {
     const spans = this.editor.querySelectorAll(".highlighted-sentence");
     spans.forEach(span => {
       const selectSentence = () => {
@@ -91,13 +161,6 @@ export default class TextEditorModule {
         }
       });
     });
-    
-    // Execute after render callback if provided
-    setTimeout(() => {
-      if (typeof options.afterRender === 'function') {
-        options.afterRender();
-      }
-    }, 10);
   }
   
   /**
