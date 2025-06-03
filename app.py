@@ -10,7 +10,7 @@ app = Flask(__name__, template_folder='./frontend', static_folder='./frontend')
 # Initialize analyzer and sentence generator with optimized parameters
 analyzer = EmotionAnalyzer()
 sentence_generator = SentenceGenerator(
-    model_name="gpt-4o-mini",
+    model_name="gpt-4.1-nano",
     max_tokens=100,
     analyzer=analyzer
 )
