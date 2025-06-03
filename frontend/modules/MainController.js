@@ -582,6 +582,9 @@ class MainController {
     
     console.log("Auto-analyzing text after user stopped typing...");
     
+    // Save editor state before analysis
+    this.textEditorModule.saveCursorPosition();
+    
     // Show subtle loading indicator (without blocking UI)
     document.body.classList.add('analyzing');
     
@@ -592,15 +595,19 @@ class MainController {
           this.updateEmotions();
           this.updateVisualizations();
           
-          this.updateSentenceList();
-
-          // Print the full JSON result as an object
-          console.log("Dynamic analysis JSON result:", data);          
+          // Pass cursor preservation option and force it to true
+          this.updateSentenceList({
+            preserveCursor: true,
+            afterRender: () => {
+              //console.log("Text rendered with cursor preservation");
+              // Explicitly restore cursor position again for redundancy
+              setTimeout(() => this.textEditorModule.restoreCursorPosition(), 50);
+            }
+          });
         }
       })
       .catch(error => {
         console.error("Error during auto-analysis:", error);
-        // Don't show error alerts for automatic analysis to avoid disrupting the user
       })
       .finally(() => {
         document.body.classList.remove('analyzing');

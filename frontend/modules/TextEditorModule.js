@@ -5,6 +5,7 @@ export default class TextEditorModule {
     this.changeCallbacks = [];
     this.debounceTimeout = null;
     this.debounceDelay = 2500; // 2.5 seconds delay before triggering analysis
+    this.cursorPosition = null; // Store cursor as character offset instead of range
     
     if (!this.editor) {
       console.warn(`No editor found with selector: ${editorSelector}`);
@@ -24,6 +25,120 @@ export default class TextEditorModule {
     // Add event listeners
     this.editor.addEventListener("input", this._handleInput.bind(this));
     this.editor.addEventListener("scroll", this._handleScroll.bind(this));
+    
+    // Track cursor with simpler events
+    this.editor.addEventListener("click", this.saveCursorPosition.bind(this));
+    this.editor.addEventListener("keyup", this.saveCursorPosition.bind(this));
+  }
+  
+  /**
+   * Save cursor position as character offset
+   */
+  saveCursorPosition() {
+    if (!this.editor) return;
+    
+    try {
+      const selection = window.getSelection();
+      if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        
+        // Only save if the range is within our editor
+        if (this.editor.contains(range.commonAncestorContainer)) {
+          // Save as offset from start rather than DOM range
+          this.cursorPosition = this._getOffsetFromStart(range);
+          //console.log("Cursor position saved:", this.cursorPosition);
+        }
+      }
+    } catch (e) {
+      console.error("Error saving cursor position:", e);
+    }
+  }
+  
+  /**
+   * Calculate character offset from start of editor to cursor position
+   */
+  _getOffsetFromStart(range) {
+    const preSelectionRange = range.cloneRange();
+    preSelectionRange.selectNodeContents(this.editor);
+    preSelectionRange.setEnd(range.startContainer, range.startOffset);
+    return preSelectionRange.toString().length;
+  }
+  
+  /**
+   * Restore cursor position using character offset
+   */
+  restoreCursorPosition() {
+    if (!this.editor || this.cursorPosition === null) return;
+    
+    try {
+      //console.log("Attempting to restore cursor to position:", this.cursorPosition);
+      
+      // Give DOM time to fully render
+      setTimeout(() => {
+        const position = this.cursorPosition;
+        const nodes = this._getAllTextNodes(this.editor);
+        let currentOffset = 0;
+        let targetNode = null;
+        let targetOffset = 0;
+        
+        // Find the text node and offset where our cursor should go
+        for (let node of nodes) {
+          const nodeLength = node.textContent.length;
+          
+          if (currentOffset + nodeLength >= position) {
+            targetNode = node;
+            targetOffset = position - currentOffset;
+            break;
+          }
+          
+          currentOffset += nodeLength;
+        }
+        
+        // Set cursor position if we found a valid target
+        if (targetNode) {
+          const range = document.createRange();
+          const selection = window.getSelection();
+          
+          range.setStart(targetNode, targetOffset);
+          range.collapse(true);
+          
+          selection.removeAllRanges();
+          selection.addRange(range);
+          this.editor.focus();
+          
+          //console.log("Cursor restored successfully");
+        } else {
+          console.warn("Could not find target node for cursor restoration");
+          // As fallback, focus the editor and place cursor at beginning
+          this.editor.focus();
+        }
+      }, 10); // Small delay to ensure DOM is ready
+    } catch (e) {
+      console.error("Error restoring cursor position:", e);
+      this.editor.focus();
+    }
+  }
+  
+  /**
+   * Get all text nodes in the editor
+   */
+  _getAllTextNodes(element) {
+    let textNodes = [];
+    
+    function getTextNodes(node) {
+      if (node.nodeType === 3) {
+        // Text node
+        textNodes.push(node);
+      } else if (node.nodeType === 1) {
+        // Element node
+        for (let childNode of node.childNodes) {
+          getTextNodes(childNode);
+        }
+      }
+    }
+    
+    getTextNodes(element);
+    return textNodes;
   }
   
   /**
@@ -34,6 +149,9 @@ export default class TextEditorModule {
     // Save to localStorage
     localStorage.setItem('editorContent', this.editor.innerHTML);
     
+    // Save cursor position when typing
+    this.saveCursorPosition();
+    
     // Clear any existing timeout
     if (this.debounceTimeout) {
       clearTimeout(this.debounceTimeout);
@@ -43,7 +161,9 @@ export default class TextEditorModule {
     this.debounceTimeout = setTimeout(() => {
       const text = this.getText().trim();
       if (text) {
-        this.changeCallbacks.forEach(callback => callback(text));
+        this.changeCallbacks.forEach(callback => callback(text, {
+          preserveCursor: true
+        }));
       }
     }, this.debounceDelay);
   }
@@ -53,6 +173,11 @@ export default class TextEditorModule {
    */
   renderSentences(results, selectedIndex = null, onSentenceSelect = () => {}, options = {}) {
     if (!this.editor || !results || results.length === 0) return;
+    
+    // Save cursor position if preserveCursor option is set
+    if (options.preserveCursor) {
+      this.saveCursorPosition();
+    }
     
     // Check if we have structured data available
     if (results.structured_data && results.structured_data.structured_text) {
@@ -64,6 +189,11 @@ export default class TextEditorModule {
     // Save to localStorage
     localStorage.setItem('editorContent', this.editor.innerHTML);
     localStorage.setItem('analysisData', JSON.stringify(results));
+    
+    // Restore cursor position if preserveCursor option is set
+    if (options.preserveCursor && this.cursorPosition !== null) {
+      this.restoreCursorPosition();
+    }
     
     // Execute after render callback if provided
     setTimeout(() => {
