@@ -590,10 +590,7 @@ class MainController {
           this.updateEmotions();
           this.updateVisualizations();
           
-          // Update sentence list with specific options to preserve cursor position
-          this.updateSentenceList({
-            preserveCursor: true // Set this option to true to preserve cursor position
-          });
+          this.updateSentenceList();
 
           // Print the full JSON result as an object
           console.log("Dynamic analysis JSON result:", data);          
