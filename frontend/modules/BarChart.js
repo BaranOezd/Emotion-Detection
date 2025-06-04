@@ -5,6 +5,7 @@ export default class BarChartModule {
     this.emotions = emotions;
     this.selectedEmotions = [];
     this.tempEmotionValues = null; // New property to store temporary emotion values
+    this.previousEmotionValues = null; // Store previous sentence emotion values for smooth transitions
     this.aiEnabled = true; // Track whether AI modifications are enabled
   }
 
@@ -34,10 +35,23 @@ export default class BarChartModule {
         .style("opacity", 0);
     }
   
+    // Save current emotion values as previous before updating
+    if (this.tempEmotionValues) {
+      this.previousEmotionValues = { ...this.tempEmotionValues };
+    } else {
+      // Initialize with zeros if no previous values exist
+      this.previousEmotionValues = {};
+      if (this.emotions.length) {
+        this.emotions.forEach(emotion => this.previousEmotionValues[emotion] = 0);
+      } else if (sentenceData.emotions) {
+        Object.keys(sentenceData.emotions).forEach(emotion => this.previousEmotionValues[emotion] = 0);
+      }
+    }
+    
     // Initialize a fresh copy of emotion values when rendering a new sentence
     this.tempEmotionValues = Object.assign({}, sentenceData.emotions);
   
-    // Set the baseline emotion values on sentenceData if not already set.
+    // Set the baseline emotion values on sentenceData if not already set
     sentenceData.originalEmotions = sentenceData.originalEmotions || Object.assign({}, sentenceData.emotions);
   
     // Dynamically calculate height and width based on available space
@@ -59,18 +73,28 @@ export default class BarChartModule {
       .append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
   
-    // Use provided emotions or keys from sentenceData.emotions.
+    // Use provided emotions or keys from sentenceData.emotions
     const emotions = this.emotions.length ? this.emotions : Object.keys(this.tempEmotionValues);
   
-    // Normalize emotion scores so that their sum equals 1.
+    // Normalize emotion scores so that their sum equals 1
     let total = emotions.reduce((sum, emotion) => sum + (+this.tempEmotionValues[emotion] || 0), 0);
     const emotionScores = emotions.map(emotion => {
       let raw = +this.tempEmotionValues[emotion] || 0;
       let normalized = total > 0 ? raw / total : 0;
-      return { emotion, score: normalized };
+      
+      // Also include previous value for transition
+      let previousValue = this.previousEmotionValues[emotion] || 0;
+      let previousTotal = emotions.reduce((sum, e) => sum + (+this.previousEmotionValues[e] || 0), 0);
+      let previousNormalized = previousTotal > 0 ? previousValue / previousTotal : 0;
+      
+      return { 
+        emotion, 
+        score: normalized,
+        previousScore: previousNormalized 
+      };
     });      
     
-    // Define scales for a horizontal bar chart.
+    // Define scales for a horizontal bar chart
     const y = d3.scaleBand()
       .domain(emotions)
       .range([0, height]) // Use the full height for the bars
@@ -142,7 +166,7 @@ export default class BarChartModule {
         d3.select(this).style("opacity", 1);
       });
   
-    // Draw horizontal bars for each emotion with initial width set to 0 or final width if skipAnimation
+    // Draw horizontal bars - start from previous values instead of 0
     const bars = svg.selectAll(".bar")
       .data(emotionScores)
       .enter().append("rect")
@@ -150,7 +174,9 @@ export default class BarChartModule {
       .attr("y", d => y(d.emotion))
       .attr("x", 0)
       .attr("height", y.bandwidth()) // Dynamically adjust bar height
-      .attr("width", skipAnimation ? d => Math.max(x(d.score), dynamicMinWidth) : 0)  // Skip animation if specified
+      .attr("width", d => skipAnimation 
+        ? Math.max(x(d.score), dynamicMinWidth) // Final width if skipping animation
+        : Math.max(x(d.previousScore), dynamicMinWidth)) // Start from previous width
       .style("fill", d => this.emotionColors[d.emotion])
       .style("cursor", "pointer")
       .attr("tabindex", 0)
@@ -175,20 +201,30 @@ export default class BarChartModule {
     // Only animate if not skipping animation
     if (!skipAnimation) {
       bars.transition()
-        .duration(500)  // Animation duration in milliseconds
+        .duration(300)  
+        .ease(d3.easeQuadInOut)
         .attr("width", d => Math.max(x(d.score), dynamicMinWidth));
     }
   
-    // Append labels to the right end of each bar showing the emotion names.
+    // Append labels to the right end of each bar showing the emotion names
     svg.selectAll(".label")
       .data(emotionScores)
       .enter().append("text")
       .attr("class", "label")
       .attr("y", d => y(d.emotion) + y.bandwidth() / 2 + 4)
-      .attr("x", d => Math.max(x(d.score), dynamicMinWidth) + 5)
+      .attr("x", d => Math.max(x(skipAnimation ? d.score : d.previousScore), dynamicMinWidth) + 5)
       .attr("text-anchor", "start")
       .style("font-size", "12px")
       .text(d => d.emotion);
+      
+    // Animate label positions too - also make this faster
+    if (!skipAnimation) {
+      svg.selectAll(".label")
+        .transition()
+        .duration(300)  // Reduced from 800ms to 500ms to match bar animation
+        .ease(d3.easeQuadInOut)
+        .attr("x", d => Math.max(x(d.score), dynamicMinWidth) + 5);
+    }
   }
   
   // Get the current temporary emotion values
