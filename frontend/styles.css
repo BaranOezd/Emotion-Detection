@@ -43,7 +43,7 @@ html, body {
 }
 
 .body {
-  flex: 0 0 75%; /* Reduced from 80% to 75% to give more space to bottom */
+  flex: 0 0 90%; /* Increased from 90% to 95% to give more space to main content */
   display: grid;
   grid-template-columns: 1fr 2fr 1fr;
   grid-template-areas: "linechart editor barchart";
@@ -53,14 +53,14 @@ html, body {
 }
 
 .bottom-container {
-  flex: 0 0 20%; /* Increased from 15% to 20% */
+  flex: 0 0 10%; /* Reduced from 10% to 5% */
   display: grid;
   grid-template-columns: 1fr 2fr 1fr;
   grid-template-areas: "lineChartLegend buttonsContainer barChartButtons";
-  padding: var(--space-sm);
+  /* padding: var(--space-xs); /* Reduced padding from var(--space-sm) 
   background-color: var(--color-bg-secondary);
   min-height: 0;
-  max-height: 20vh; /* Increased from 15vh to 20vh */
+  max-height: 5vh; */
 }
 
 /* Chart containers */
@@ -238,8 +238,8 @@ svg {
 
 /* Buttons and interactive elements */
 button {
-  padding: 0.3rem 0.6rem;
-  font-size: 0.85rem;
+  padding: 0.25rem 0.5rem; /* Reduced from 0.3rem 0.6rem */
+  font-size: 0.8rem; /* Reduced from 0.85rem */
   border: none;
   border-radius: var(--border-radius-sm);
   cursor: pointer;
@@ -247,8 +247,8 @@ button {
   color: var(--color-bg);
   transition: all var(--transition-speed) ease;
   box-shadow: var(--shadow-md);
-  min-width: 60px;
-  height: 28px;
+  min-width: 55px; /* Reduced from 60px */
+  height: 26px; /* Reduced from 28px */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -311,9 +311,10 @@ button.loading {
 #buttonsContainer, #barChartButtons {
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start; /* Align buttons to the top */
   gap: var(--space-xs);
-  margin: var(--space-xs) 0;
+  margin: 0; /* Removed margin to bring buttons closer */
+  padding-top: 2px; /* Small top padding to position buttons at the very top */
 }
 
 #buttonsContainer {
@@ -324,14 +325,15 @@ button.loading {
   grid-area: barChartButtons;
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start; /* Align buttons to the top */
   gap: var(--space-xs);
-  margin: var(--space-xs) 0;
+  margin: 0; /* Removed all margins */
+  padding-top: 2px; /* Small top padding to position buttons at the very top */
 }
 
 /* Divider and utility elements */
 .container-divider {
-  height: 2px;
+  height: 1px; /* Reduced from 2px */
   background-color: var(--color-divider);
   margin: 0;
   box-shadow: var(--shadow-sm);
