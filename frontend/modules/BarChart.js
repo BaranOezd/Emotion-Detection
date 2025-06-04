@@ -181,52 +181,143 @@ export default class BarChartModule {
         d3.select(this).style("opacity", 1);
       });
     
-    // Add checkboxes to the left of each bar
+    // Add checkboxes to the left of each bar with improved styling and logic
     const self = this;
-    const checkboxSize = 16; // Size of the checkbox
+    const checkboxSize = 14; // Slightly smaller for better proportions
     
     // Add checkbox for each emotion
     emotions.forEach((emotion, i) => {
       const checkboxY = y(emotion) + (y.bandwidth() - checkboxSize) / 2;
       
-      // Create checkbox group
-      const checkboxContainer = checkboxGroup.append("g")
-        .attr("transform", `translate(20, ${checkboxY})`)
-        .style("cursor", "pointer");
-      
-      // Add checkbox background
-      checkboxContainer.append("rect")
-        .attr("x", 0)
-        .attr("y", 0)
-        .attr("width", checkboxSize)
-        .attr("height", checkboxSize)
-        .attr("stroke", "#333")
-        .attr("stroke-width", 1)
-        .attr("fill", "white");
-      
-      // Add checkbox checkmark conditionally
+      // Check if this emotion is currently selected in the line chart
       const isSelected = self.lineChartModule && 
                          self.lineChartModule.selectedEmotions && 
                          self.lineChartModule.selectedEmotions.includes(emotion);
       
+      // Create checkbox container with better hover states
+      const checkboxContainer = checkboxGroup.append("g")
+        .attr("class", "checkbox-container")
+        .attr("transform", `translate(15, ${checkboxY})`)
+        .style("cursor", "pointer");
+      
+      // Add hover background for better UX
+      const hoverBg = checkboxContainer.append("rect")
+        .attr("class", "checkbox-hover-bg")
+        .attr("x", -3)
+        .attr("y", -3)
+        .attr("width", checkboxSize + 6)
+        .attr("height", checkboxSize + 6)
+        .attr("rx", 2)
+        .attr("fill", "transparent")
+        .attr("stroke", "none");
+      
+      // Add checkbox background with better styling
+      const checkboxBg = checkboxContainer.append("rect")
+        .attr("class", "checkbox-bg")
+        .attr("x", 0)
+        .attr("y", 0)
+        .attr("width", checkboxSize)
+        .attr("height", checkboxSize)
+        .attr("rx", 2) // Rounded corners
+        .attr("stroke", isSelected ? self.emotionColors[emotion] : "#666")
+        .attr("stroke-width", isSelected ? 2 : 1)
+        .attr("fill", isSelected ? self.emotionColors[emotion] : "white");
+      
+      // Add checkmark with smooth transitions
       const checkmark = checkboxContainer.append("path")
-        .attr("d", "M3,9 L7,13 L13,3") // Simple checkmark path
-        .attr("stroke", "#333")
+        .attr("class", "checkbox-checkmark")
+        .attr("d", "M2,7 L6,11 L12,3") // Adjusted for smaller size
+        .attr("stroke", isSelected ? "white" : "transparent")
         .attr("stroke-width", 2)
+        .attr("stroke-linecap", "round")
+        .attr("stroke-linejoin", "round")
         .attr("fill", "none")
         .style("opacity", isSelected ? 1 : 0);
+    
       
-      // Add click event to toggle emotion visibility
-      checkboxContainer.on("click", function() {
-        if (!self.lineChartModule) return;
-        
-        // Toggle this emotion's visibility
-        self.toggleEmotionSelection(emotion);
-        
-        // Update this checkmark visibility
-        const isNowSelected = self.lineChartModule.selectedEmotions.includes(emotion);
-        checkmark.style("opacity", isNowSelected ? 1 : 0);
-      });
+      // Enhanced interaction with visual feedback
+      checkboxContainer
+        .on("mouseenter", function() {
+          hoverBg.attr("fill", "rgba(0,0,0,0.05)");
+          if (!isSelected) {
+            checkboxBg.attr("stroke", self.emotionColors[emotion]);
+          }
+        })
+        .on("mouseleave", function() {
+          hoverBg.attr("fill", "transparent");
+          const currentlySelected = self.lineChartModule && 
+                                   self.lineChartModule.selectedEmotions && 
+                                   self.lineChartModule.selectedEmotions.includes(emotion);
+          if (!currentlySelected) {
+            checkboxBg.attr("stroke", "#666");
+          }
+        })
+        .on("click", function(event) {
+          if (!self.lineChartModule) return;
+          
+          // Prevent event bubbling
+          event.stopPropagation();
+          
+          // Get current selection state
+          const currentSelection = self.lineChartModule.selectedEmotions || [];
+          let newSelection = [...currentSelection];
+          
+          if (event.shiftKey || event.ctrlKey) {
+            // Multi-select mode: toggle this emotion
+            if (newSelection.includes(emotion)) {
+              newSelection = newSelection.filter(e => e !== emotion);
+            } else {
+              newSelection.push(emotion);
+            }
+          } else {
+            // Single-select mode: if this emotion is the only one selected, deselect all
+            // Otherwise, select only this emotion
+            if (newSelection.length === 1 && newSelection[0] === emotion) {
+              newSelection = [];
+            } else {
+              newSelection = [emotion];
+            }
+          }
+          
+          // Update the selection
+          self.updateEmotionSelection(newSelection);
+          
+          // Update this checkbox visual state immediately
+          const nowSelected = newSelection.includes(emotion);
+          
+          // Animate checkbox state change
+          checkboxBg
+            .transition()
+            .duration(100) // Reduced from 200
+            .attr("stroke", nowSelected ? self.emotionColors[emotion] : "#666")
+            .attr("stroke-width", nowSelected ? 2 : 1)
+            .attr("fill", nowSelected ? self.emotionColors[emotion] : "white");
+          
+          checkmark
+            .transition()
+            .duration(100) // Reduced from 200
+            .style("opacity", nowSelected ? 1 : 0)
+            .attr("stroke", nowSelected ? "white" : "transparent");
+          
+          // Update all other checkboxes to reflect new state
+          setTimeout(() => self.updateAllCheckboxes(), 150); // Reduced from 250
+        });
+      
+      // Add keyboard accessibility
+      checkboxContainer
+        .attr("tabindex", 0)
+        .attr("role", "checkbox")
+        .attr("aria-checked", isSelected)
+        .attr("aria-label", `Toggle ${emotion} visibility`)
+        .on("keydown", function(event) {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            checkboxContainer.node().dispatchEvent(new MouseEvent("click", {
+              shiftKey: event.shiftKey,
+              ctrlKey: event.ctrlKey
+            }));
+          }
+        });
     });
   
     // Draw horizontal bars - start from previous values instead of 0
@@ -312,5 +403,55 @@ export default class BarChartModule {
   // Get the current temporary emotion values
   getCurrentEmotionValues() {
     return this.tempEmotionValues;
+  }
+  
+  updateEmotionSelection(newSelection) {
+    if (!this.lineChartModule) return;
+    
+    // Update the LineChart module's emotion selection
+    this.lineChartModule.selectedEmotions = newSelection;
+    
+    // Update line visibility in the line chart
+    d3.selectAll(".lines")
+      .transition()
+      .duration(300)
+      .style("opacity", function() {
+        const classes = d3.select(this).attr("class").split(" ");
+        return newSelection.length === 0 || newSelection.some(sel => classes.includes(`line-${sel}`)) ? 1 : 0.15;
+      });
+    
+    // Update legend in line chart if it exists
+    if (this.lineChartModule.updateLegendSelection) {
+      this.lineChartModule.updateLegendSelection(newSelection);
+    }
+  }
+  
+  updateAllCheckboxes() {
+    if (!this.lineChartModule) return;
+    
+    const currentSelection = this.lineChartModule.selectedEmotions || [];
+    const checkboxContainers = d3.selectAll(".checkbox-container");
+    const self = this; 
+    
+    checkboxContainers.each(function() {
+      const container = d3.select(this);
+      // Get emotion name from aria-label instead of label text
+      const ariaLabel = container.attr("aria-label");
+      const emotion = ariaLabel ? ariaLabel.replace("Toggle ", "").replace(" visibility", "") : "";
+      const isSelected = currentSelection.includes(emotion);
+      
+      // Update visual state
+      container.select(".checkbox-bg")
+        .attr("stroke", isSelected ? self.emotionColors[emotion] : "#666")
+        .attr("stroke-width", isSelected ? 2 : 1)
+        .attr("fill", isSelected ? self.emotionColors[emotion] : "white");
+      
+      container.select(".checkbox-checkmark")
+        .style("opacity", isSelected ? 1 : 0)
+        .attr("stroke", isSelected ? "white" : "transparent");
+      
+      // Update accessibility attributes
+      container.attr("aria-checked", isSelected);
+    });
   }
 }

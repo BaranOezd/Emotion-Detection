@@ -79,14 +79,43 @@ html, body {
   padding: var(--space-md);
 }
 
-/* Emotion checkbox styling */
+/* Enhanced checkbox styling */
+.checkbox-container {
+  transition: all 0.1s ease; /* Reduced from 0.2s */
+}
+
+.checkbox-container:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+.checkbox-hover-bg {
+  transition: fill 0.1s ease; 
+}
+
+.checkbox-bg {
+  transition: all 0.1s ease; 
+}
+
+.checkbox-checkmark {
+  transition: all 0.1s ease; 
+}
+
+.checkbox-label {
+  transition: all 0.1s ease; 
+  pointer-events: none; /* Prevent text selection */
+}
+
+/* Improved emotion checkbox styling for better UX */
 .emotion-checkbox-container {
   border-bottom: 1px solid var(--color-border);
-  margin-bottom: 10px;
+  margin-bottom: 8px; /* Reduced from 10px */
+  padding-bottom: 5px;
 }
 
 .emotion-checkbox-grid {
-  padding: 5px 0;
+  padding: 3px 0; 
 }
 
 .emotion-checkbox-grid label {
