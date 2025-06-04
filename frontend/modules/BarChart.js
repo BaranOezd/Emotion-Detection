@@ -7,6 +7,12 @@ export default class BarChartModule {
     this.tempEmotionValues = null; // New property to store temporary emotion values
     this.previousEmotionValues = null; // Store previous sentence emotion values for smooth transitions
     this.aiEnabled = true; // Track whether AI modifications are enabled
+    this.lineChartModule = null; // Will be set by MainController
+  }
+
+  // Method to link the LineChart module
+  setLineChartModule(lineChartModule) {
+    this.lineChartModule = lineChartModule;
   }
 
   clear() {
@@ -27,12 +33,14 @@ export default class BarChartModule {
       tooltip = d3.select("body").append("div")
         .attr("class", "tooltip")
         .style("position", "absolute")
-        .style("background", "#fff")
-        .style("padding", "5px")
+        .style("pointer-events", "none")
+        .style("opacity", 0)
+        .style("background-color", "#fff")
         .style("border", "1px solid #ccc")
         .style("border-radius", "4px")
-        .style("pointer-events", "none")
-        .style("opacity", 0);
+        .style("padding", "5px")
+        .style("font-size", "12px")
+        .style("box-shadow", "0 2px 8px rgba(0,0,0,0.1)");
     }
   
     // Save current emotion values as previous before updating
@@ -50,7 +58,7 @@ export default class BarChartModule {
     
     // Initialize a fresh copy of emotion values when rendering a new sentence
     this.tempEmotionValues = Object.assign({}, sentenceData.emotions);
-  
+    
     // Set the baseline emotion values on sentenceData if not already set
     sentenceData.originalEmotions = sentenceData.originalEmotions || Object.assign({}, sentenceData.emotions);
   
@@ -59,8 +67,8 @@ export default class BarChartModule {
     const availableHeight = containerNode.clientHeight;
     const availableWidth = containerNode.clientWidth;
   
-    // Set up margins and dimensions
-    const margin = { top: 10, right: 20, bottom: 40, left: 20 }; // Reduced top margin
+    // Add extra left margin for checkboxes
+    const margin = { top: 10, right: 20, bottom: 40, left: 50 }; // Increased left margin for checkboxes
     const width = availableWidth - margin.left - margin.right;
     const height = availableHeight - margin.top - margin.bottom;
   
@@ -69,9 +77,16 @@ export default class BarChartModule {
       .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
       .attr("preserveAspectRatio", "xMidYMid meet")
       .style("width", "100%")
-      .style("height", "100%")
-      .append("g")
+      .style("height", "100%");
+    
+    // Create a container group for bars and labels
+    const chartGroup = svg.append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
+    
+    // Create a separate container for checkboxes
+    const checkboxGroup = svg.append("g")
+      .attr("class", "checkbox-container")
+      .attr("transform", `translate(0,${margin.top})`);
   
     // Use provided emotions or keys from sentenceData.emotions
     const emotions = this.emotions.length ? this.emotions : Object.keys(this.tempEmotionValues);
@@ -92,7 +107,7 @@ export default class BarChartModule {
         score: normalized,
         previousScore: previousNormalized 
       };
-    });      
+    });
     
     // Define scales for a horizontal bar chart
     const y = d3.scaleBand()
@@ -106,7 +121,7 @@ export default class BarChartModule {
       .range([0, width]);
   
     // Append the x-axis at the bottom for percentage values.
-    svg.append("g")
+    chartGroup.append("g")
       .attr("transform", `translate(0,${height})`) // Move x-axis to the bottom
       .call(d3.axisBottom(x)
         .ticks(5)
@@ -165,9 +180,57 @@ export default class BarChartModule {
         if (!this.aiEnabled) return; // Cancel drag if AI modifications are disabled
         d3.select(this).style("opacity", 1);
       });
+    
+    // Add checkboxes to the left of each bar
+    const self = this;
+    const checkboxSize = 16; // Size of the checkbox
+    
+    // Add checkbox for each emotion
+    emotions.forEach((emotion, i) => {
+      const checkboxY = y(emotion) + (y.bandwidth() - checkboxSize) / 2;
+      
+      // Create checkbox group
+      const checkboxContainer = checkboxGroup.append("g")
+        .attr("transform", `translate(20, ${checkboxY})`)
+        .style("cursor", "pointer");
+      
+      // Add checkbox background
+      checkboxContainer.append("rect")
+        .attr("x", 0)
+        .attr("y", 0)
+        .attr("width", checkboxSize)
+        .attr("height", checkboxSize)
+        .attr("stroke", "#333")
+        .attr("stroke-width", 1)
+        .attr("fill", "white");
+      
+      // Add checkbox checkmark conditionally
+      const isSelected = self.lineChartModule && 
+                         self.lineChartModule.selectedEmotions && 
+                         self.lineChartModule.selectedEmotions.includes(emotion);
+      
+      const checkmark = checkboxContainer.append("path")
+        .attr("d", "M3,9 L7,13 L13,3") // Simple checkmark path
+        .attr("stroke", "#333")
+        .attr("stroke-width", 2)
+        .attr("fill", "none")
+        .style("opacity", isSelected ? 1 : 0);
+      
+      // Add click event to toggle emotion visibility
+      checkboxContainer.on("click", function() {
+        if (!self.lineChartModule) return;
+        
+        // Toggle this emotion's visibility
+        self.toggleEmotionSelection(emotion);
+        
+        // Update this checkmark visibility
+        const isNowSelected = self.lineChartModule.selectedEmotions.includes(emotion);
+        checkmark.style("opacity", isNowSelected ? 1 : 0);
+      });
+    });
   
     // Draw horizontal bars - start from previous values instead of 0
-    const bars = svg.selectAll(".bar")
+    const bars = chartGroup.selectAll(".bar")
       .data(emotionScores)
       .enter().append("rect")
       .attr("class", "bar")
@@ -207,7 +270,7 @@ export default class BarChartModule {
     }
   
     // Append labels to the right end of each bar showing the emotion names
-    svg.selectAll(".label")
+    chartGroup.selectAll(".label")
       .data(emotionScores)
       .enter().append("text")
       .attr("class", "label")
@@ -221,12 +284,31 @@ export default class BarChartModule {
     if (!skipAnimation) {
       svg.selectAll(".label")
         .transition()
-        .duration(300)  // Reduced from 800ms to 500ms to match bar animation
+        .duration(300)
         .ease(d3.easeQuadInOut)
         .attr("x", d => Math.max(x(d.score), dynamicMinWidth) + 5);
     }
   }
   
+  toggleEmotionSelection(emotion) {
+    if (!this.lineChartModule) return;
+    
+    const selectedEmotions = this.lineChartModule.selectedEmotions || [];
+    let updatedSelection = [];
+    
+    // Check if the emotion is already selected
+    if (selectedEmotions.includes(emotion)) {
+      // Remove it if already selected
+      updatedSelection = selectedEmotions.filter(e => e !== emotion);
+    } else {
+      // Add it if not already selected
+      updatedSelection = [...selectedEmotions, emotion];
+    }
+    
+    // Update the LineChart module's emotion visibility
+    this.lineChartModule.updateEmotionVisibility(updatedSelection);
+  }
+
   // Get the current temporary emotion values
   getCurrentEmotionValues() {
     return this.tempEmotionValues;

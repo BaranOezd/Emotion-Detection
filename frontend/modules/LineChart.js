@@ -260,23 +260,6 @@ export default class LineChartModule {
         .text("No data available");
     }
 
-    // Render the legend in the #lineChartLegend container
-    const legendContainer = d3.select("#lineChartLegend");
-    legendContainer.html(""); // Clear the legend container
-
-    // Calculate proper legend height based on number of emotions
-    const numRows = Math.ceil(this.emotions.length / 4); // At most 4 per row
-    const legendHeight = Math.max(110, numRows * 40 + 30); // Dynamic height with minimum
-
-    const legendSvg = legendContainer.append("svg")
-      .attr("class", "legend-svg")
-      .attr("width", "100%")
-      .attr("height", "100%") // Fill entire container
-      .attr("viewBox", `0 0 ${chartWidth} ${legendHeight}`)
-      .attr("preserveAspectRatio", "xMidYMid meet");
-
-    this.drawLegend(legendSvg, chartWidth, legendHeight);
-
     // Store references to important elements for later use
     this.chartSvg = chartSvg;
     this.x = x;
@@ -352,81 +335,22 @@ export default class LineChartModule {
     this.resizeObserver.observe(wrapper.node());
   }
 
-  drawLegend(legendSvg, chartWidth, legendHeight) {
-    const padding = { x: 15, y: 10 };
-    const emotionColors = this.emotionColors;
-    const self = this;
+  // Remove the drawLegend method
+  // drawLegend(legendSvg, chartWidth, legendHeight) { ... }
 
-    // Clear any existing legend content
-    legendSvg.html("");
+  // Add a method to handle emotion filtering that can be called from BarChart
+  updateEmotionVisibility(selectedEmotions) {
+    this.selectedEmotions = selectedEmotions;
+    
+    if (!this.chartSvg) return;
 
-    // Create a scrollable container for the legend
-    const legendContainer = d3.select("#lineChartLegend")
-      .style("overflow-y", "auto") // Enable vertical scrolling
-      .style("max-height", "150px") // Limit the height of the legend
-      .style("display", "grid") // Use grid layout for items
-      .style("grid-template-columns", "repeat(auto-fit, minmax(120px, 1fr))") // Responsive grid
-      .style("gap", "10px") // Add spacing between items
-      .style("padding", "10px"); // Add padding inside the container
-
-    // Add legend items for each emotion
-    this.emotions.forEach(emotion => {
-      const legendItem = legendContainer.append("div")
-        .attr("class", "legend-item")
-        .style("display", "flex")
-        .style("align-items", "center")
-        .style("cursor", "pointer")
-        .attr("data-emotion", emotion);
-
-      // Add color box
-      legendItem.append("div")
-        .style("width", "15px")
-        .style("height", "15px")
-        .style("background-color", emotionColors[emotion])
-        .style("border", "1px solid #000")
-        .style("margin-right", "8px");
-
-      // Add emotion label
-      legendItem.append("span")
-        .style("font-size", "12px")
-        .style("font-weight", "500")
-        .text(emotion);
-
-      // Add click event for filtering
-      legendItem.on("click", function (event) {
-        const clickedEmotion = d3.select(this).attr("data-emotion");
-
-        if (event.shiftKey) {
-          // Shift+Click: Add or remove the emotion from the selected list
-          if (self.selectedEmotions.includes(clickedEmotion)) {
-            self.selectedEmotions = self.selectedEmotions.filter(e => e !== clickedEmotion);
-          } else {
-            self.selectedEmotions.push(clickedEmotion);
-          }
-        } else {
-          // Regular Click: Toggle between showing only the clicked emotion or all emotions
-          if (self.selectedEmotions.length === 1 && self.selectedEmotions[0] === clickedEmotion) {
-            self.selectedEmotions = []; // Deselect all if the same emotion is clicked again
-          } else {
-            self.selectedEmotions = [clickedEmotion]; // Show only the clicked emotion
-          }
-        }
-
-        // Update legend item opacity
-        legendContainer.selectAll(".legend-item").each(function () {
-          const emotion = d3.select(this).attr("data-emotion");
-          d3.select(this).style("opacity", self.selectedEmotions.length === 0 || self.selectedEmotions.includes(emotion) ? 1 : 0.5);
-        });
-
-        // Update line visibility based on selection
-        d3.selectAll(".lines")
-          .transition().duration(500)
-          .style("opacity", function () {
-            const classes = d3.select(this).attr("class").split(" ");
-            return self.selectedEmotions.length === 0 || self.selectedEmotions.some(sel => classes.includes(`line-${sel}`)) ? 1 : 0.1;
-          });
+    // Update line visibility based on selection
+    d3.selectAll(".lines")
+      .transition().duration(500)
+      .style("opacity", function () {
+        const classes = d3.select(this).attr("class").split(" ");
+        return selectedEmotions.length === 0 || selectedEmotions.some(sel => classes.includes(`line-${sel}`)) ? 1 : 0.1;
       });
-    });
   }
 
   /**

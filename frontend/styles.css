@@ -79,6 +79,29 @@ html, body {
   padding: var(--space-md);
 }
 
+/* Emotion checkbox styling */
+.emotion-checkbox-container {
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 10px;
+}
+
+.emotion-checkbox-grid {
+  padding: 5px 0;
+}
+
+.emotion-checkbox-grid label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+}
+
+.emotion-checkbox-grid input[type="checkbox"] {
+  cursor: pointer;
+  margin-right: 5px;
+}
+
 .chart-container {
   flex: 1;
   overflow: auto;
@@ -378,4 +401,15 @@ button.countdown-active {
   color: #495057 !important;
   border: 2px solid var(--color-primary) !important;
   font-weight: bold !important;
+}
+
+/* Hide legend container but keep it in DOM for layout purposes */
+#lineChartLegend {
+  visibility: hidden;
+  height: 0;
+}
+
+/* Reduce the padding at the top of the bar chart to make room for checkboxes */
+#barchart {
+  padding-top: 5px;
 }

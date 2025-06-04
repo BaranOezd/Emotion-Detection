@@ -44,6 +44,9 @@ class MainController {
     this.barChartModule = new BarChartModule("#barchart", this.emotionColors, this.emotions);
     this.lineChartModule = new LineChartModule("#linechart", this.emotions, this.emotionColors);
     
+    // Connect the modules
+    this.barChartModule.setLineChartModule(this.lineChartModule);
+    
     // Register the sentence selection callback with the LineChart
     this.lineChartModule.onSentenceSelect((index) => {
       this.handleLineChartSentenceSelection(index);
@@ -111,7 +114,7 @@ class MainController {
       
       // If no corresponding text editor sentence was found, update directly
       this.lastSelectedIndex = index;
-      const sentenceData = this.data[index];
+      sentenceData = this.data[index];
       if (sentenceData) {
         sentenceData.index = index;
         
