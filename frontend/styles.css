@@ -267,11 +267,12 @@ button:disabled {
 /* Help button */
 #helpButton {
   grid-area: help;
-  width: 24px;
-  min-width: 24px;
-  height: 24px;
-  margin: 0; /* Remove auto margins */
-  justify-self: start; /* Align to start of grid area */
+  width: 30px;  
+  min-width: 30px;  
+  height: 30px;  
+  margin: 0;
+  justify-self: start;
+  font-size: 1rem;
 }
 
 /* Editor components */
