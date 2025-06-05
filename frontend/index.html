@@ -30,9 +30,7 @@
     <div class="container-divider"></div>
     <!-- Bottom container with legend and buttons in the same row -->
     <div class="bottom-container">
-      <div id="lineChartLegend" class="lineChart-legend">
-        <!-- Legend will be rendered here -->
-      </div>
+        <button id="helpButton" class="button" title="Show Tutorial" aria-label="Help">?</button>
       <div id="buttonsContainer" class="buttons-container">
         <button id="uploadButton" class="button" title="Upload a text file for analysis" aria-label="Upload file">
           Upload
@@ -50,9 +48,37 @@
         </button>        
       </div>
     </div>
-    <div id="loadingIndicator" class="spinner">Loading...</div>
     <div id="feedback" aria-live="polite"></div>
   </div>
+  
+  <!-- Tutorial Overlay -->
+  <div id="tutorialOverlay" class="tutorial-overlay hidden">
+    <div class="tutorial-content">
+      <h2>Welcome to Emotion Analyzer!</h2>
+      <div class="tutorial-grid">
+        <div class="tutorial-section">
+          <h3><span class="tutorial-number">1</span> Adding Text</h3>
+          <p>You can type directly in the text editor or use the "Upload" button to analyze a text file.</p>
+        </div>
+        <div class="tutorial-section">
+          <h3><span class="tutorial-number">2</span> Understanding Line Chart</h3>
+          <p>The left panel shows emotion trends across your text. Each line represents an emotion. Click on any point to select that sentence.</p>
+        </div>
+        <div class="tutorial-section">
+          <h3><span class="tutorial-number">3</span> Using Bar Chart</h3>
+          <p>The right panel shows emotion levels for the selected sentence. Drag the bars to adjust emotion intensity.</p>
+        </div>
+        <div class="tutorial-section">
+          <h3><span class="tutorial-number">4</span> Rewriting Sentences</h3>
+          <p>After adjusting emotions, click "Rewrite" to generate a new sentence matching those emotion levels.</p>
+        </div>
+      </div>
+      <div class="button-container">
+        <button id="closeTutorial" class="tutorial-close">Got it!</button>
+      </div>
+    </div>
+  </div>
+  
   <script type="module" src="app.js"></script>
 </body>
 
