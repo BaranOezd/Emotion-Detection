@@ -4,7 +4,7 @@ export default class TextEditorModule {
     this.scrollCallbacks = [];
     this.changeCallbacks = [];
     this.debounceTimeout = null;
-    this.debounceDelay = 2500; // 2.5 seconds delay before triggering analysis
+    this.debounceDelay = 4000; 
     this.cursorPosition = null; // Store cursor as character offset instead of range
     
     if (!this.editor) {
@@ -69,50 +69,60 @@ export default class TextEditorModule {
    */
   restoreCursorPosition() {
     if (!this.editor || this.cursorPosition === null) return;
-    
+
     try {
-      //console.log("Attempting to restore cursor to position:", this.cursorPosition);
-      
-      // Give DOM time to fully render
+      // Save the intended position to avoid drift if DOM changes
+      const intendedPosition = this.cursorPosition;
+
       setTimeout(() => {
-        const position = this.cursorPosition;
+        let position = intendedPosition;
         const nodes = this._getAllTextNodes(this.editor);
         let currentOffset = 0;
         let targetNode = null;
         let targetOffset = 0;
-        
+
         // Find the text node and offset where our cursor should go
         for (let node of nodes) {
           const nodeLength = node.textContent.length;
-          
+
           if (currentOffset + nodeLength >= position) {
             targetNode = node;
             targetOffset = position - currentOffset;
             break;
           }
-          
+
           currentOffset += nodeLength;
         }
-        
+
+        // If the offset is at the very end, and the last node is a text node, place at end
+        if (!targetNode && nodes.length > 0) {
+          targetNode = nodes[nodes.length - 1];
+          targetOffset = targetNode.textContent.length;
+        }
+
+        // If the offset is exactly at a node boundary, prefer the end of the node
+        if (targetNode && targetOffset > targetNode.textContent.length) {
+          targetOffset = targetNode.textContent.length;
+        }
+
+        // If the offset is negative, clamp to 0
+        if (targetOffset < 0) targetOffset = 0;
+
         // Set cursor position if we found a valid target
         if (targetNode) {
           const range = document.createRange();
           const selection = window.getSelection();
-          
+
           range.setStart(targetNode, targetOffset);
           range.collapse(true);
-          
+
           selection.removeAllRanges();
           selection.addRange(range);
           this.editor.focus();
-          
-          //console.log("Cursor restored successfully");
         } else {
-          console.warn("Could not find target node for cursor restoration");
-          // As fallback, focus the editor and place cursor at beginning
           this.editor.focus();
         }
-      }, 10); // Small delay to ensure DOM is ready
+      }, 40); // Slightly increased delay for DOM stabilization
     } catch (e) {
       console.error("Error restoring cursor position:", e);
       this.editor.focus();
