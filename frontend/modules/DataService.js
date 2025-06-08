@@ -128,10 +128,12 @@ export class DataService {
       }
       
       // Log successful analysis
+      const durationInSeconds = ((performance.now() - startTime) / 1000).toFixed(2);
+      
       this.logInteraction('api_analyze', {
         textLength: text.length,
         sentenceCount: data.results.length,
-        duration: performance.now() - startTime
+        duration: parseFloat(durationInSeconds)
       });
 
       return data;
@@ -139,10 +141,12 @@ export class DataService {
       console.error("Error analyzing text:", error);
       
       // Log failed analysis
+      const durationInSeconds = ((performance.now() - startTime) / 1000).toFixed(2);
+      
       this.logInteraction('api_error', {
         endpoint: 'analyze',
         error: error.message,
-        duration: performance.now() - startTime
+        duration: parseFloat(durationInSeconds)
       });
       
       throw error;
@@ -170,12 +174,14 @@ export class DataService {
       const data = await response.json();
       
       // Log successful upload
+      const durationInSeconds = ((performance.now() - startTime) / 1000).toFixed(2);
+      
       this.logInteraction('api_upload', {
         fileName: file.name,
         fileType: file.type,
         fileSize: file.size,
         sentenceCount: data.results ? data.results.length : 0,
-        duration: performance.now() - startTime
+        duration: parseFloat(durationInSeconds)
       });
       
       return data;
@@ -183,11 +189,13 @@ export class DataService {
       console.error("Error during file upload:", error);
       
       // Log failed upload
+      const durationInSeconds = ((performance.now() - startTime) / 1000).toFixed(2);
+      
       this.logInteraction('api_error', {
         endpoint: 'upload',
         fileName: file.name,
         error: error.message,
-        duration: performance.now() - startTime
+        duration: parseFloat(durationInSeconds)
       });
       
       throw error;
@@ -228,20 +236,26 @@ export class DataService {
       // Log emotion deltas without sentence text or ID
       const emotionDelta = this.calculateEmotionDelta(originalEmotions, data.emotion_levels);
       
+      // Convert duration from milliseconds to seconds with 2 decimal places
+      const durationInSeconds = ((performance.now() - startTime) / 1000).toFixed(2);
+      
       this.logInteraction('emotion_modified', {
         emotionDelta,
-        duration: performance.now() - startTime
+        duration: parseFloat(durationInSeconds) // Convert to number after formatting
       });
 
       return data;
     } catch (error) {
       console.error("Error modifying sentence:", error);
       
+      // Also convert error duration to seconds
+      const durationInSeconds = ((performance.now() - startTime) / 1000).toFixed(2);
+      
       // Log error without sentence text or ID
       this.logInteraction('api_error', {
         endpoint: 'modify',
         error: error.message,
-        duration: performance.now() - startTime
+        duration: parseFloat(durationInSeconds)
       });
       
       throw error;

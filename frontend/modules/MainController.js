@@ -542,18 +542,21 @@ class MainController {
     const barChartBars = document.querySelectorAll('.bar');
     const changeSentenceButton = document.getElementById("changeSentenceButton");
 
+    // Add loading indicator to body
     document.body.classList.toggle('bar-chart-loading', isGenerating);
 
+    // Disable all buttons while generating
     buttons.forEach(button => {
       button.disabled = isGenerating;
       button.classList.toggle('generating', isGenerating);
     });
     
-    // Remove spinning effect logic
+    // Make bar charts non-interactive during generation
     barChartBars.forEach(bar => {
       bar.style.pointerEvents = isGenerating ? 'none' : 'auto';
     });
 
+    // Hide loading indicator when done
     const loadingIndicator = document.getElementById("loadingIndicator");
     if (loadingIndicator && !isGenerating) {
       loadingIndicator.style.display = "none";

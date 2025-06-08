@@ -36,7 +36,7 @@ class LoggingService:
         
         return stored_count
     
-    def _filter_emotion_changes(self, emotion_data, threshold=0.001):
+    def _filter_emotion_changes(self, emotion_data, threshold=0.1):
         """Filter emotion delta to keep only significant changes.
         Can be applied to both log filtering and statistics analysis."""
         try:
