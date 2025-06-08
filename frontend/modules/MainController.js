@@ -145,6 +145,9 @@ class MainController {
     const changeSentenceButton = document.getElementById("changeSentenceButton");
     
     uploadButton.addEventListener("click", () => {
+      // Log upload button clicks
+      this.dataService.logUploadClicked();
+      
       const fileInput = document.createElement("input");
       fileInput.type = "file";
       fileInput.accept = ".txt";
@@ -376,13 +379,8 @@ class MainController {
   onReset(updatedSentenceData) {
     const indexToUpdate = updatedSentenceData.index;
     
-    // Log reset action with tracking service if available
-    if (window.trackingService) {
-      window.trackingService.logInteraction('reset_completed', {
-        sentenceId: indexToUpdate,
-        sentence: updatedSentenceData.sentence
-      });
-    }
+    // Log reset via the DataService
+    this.dataService.logResetAction(updatedSentenceData);
     
     // Ensure the original sentence text is also reset
     if (this.data[indexToUpdate].originalSentence) {
@@ -429,15 +427,7 @@ class MainController {
 
     // Use the temporary emotion values from BarChart instead of sentenceData.emotions
     const emotionsToSend = this.barChartModule.getCurrentEmotionValues();
-    
-    // Log emotion change with tracking service if available
-    if (window.trackingService) {
-      window.trackingService.logEmotionChange(
-        sentenceData,
-        sentenceData.originalEmotions || {},
-        emotionsToSend
-      );
-    }
+
 
     // Create a copy of sentenceData with the temporary emotion values
     const dataToSend = {

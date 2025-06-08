@@ -29,28 +29,22 @@ class LoggingService:
                 user_logs[user_id].append(log)
         
         # Store logs for each user
+        stored_count = 0
         for user_id, user_log_list in user_logs.items():
             self._store_user_logs(user_id, user_log_list)
+            stored_count += len(user_log_list)
         
-        return len(logs)
+        return stored_count
     
-    def _filter_emotion_delta(self, log):
-        """Filter out emotion deltas with no change."""
-        if log.get('type') == 'emotion_modified' and 'emotionDelta' in log:
-            filtered_delta = []
-            for delta in log.get('emotionDelta', []):
-                try:
-                    from_val = float(delta.get('from', 0))
-                    to_val = float(delta.get('to', 0))
-                    
-                    # Only include emotions with actual value changes
-                    if abs(from_val - to_val) >= 0.001:  # Threshold for significant change
-                        filtered_delta.append(delta)
-                except (ValueError, TypeError):
-                    continue
-                    
-            log['emotionDelta'] = filtered_delta
-        return log
+    def _filter_emotion_changes(self, emotion_data, threshold=0.001):
+        """Filter emotion delta to keep only significant changes.
+        Can be applied to both log filtering and statistics analysis."""
+        try:
+            from_val = float(emotion_data.get('from', 0))
+            to_val = float(emotion_data.get('to', 0))
+            return abs(from_val - to_val) >= threshold
+        except (ValueError, TypeError):
+            return False
     
     def _store_user_logs(self, user_id, logs):
         """Store logs for a specific user."""
@@ -63,7 +57,15 @@ class LoggingService:
         log_file = user_dir / f"{today}.jsonl"
         
         # Filter emotion deltas before storing
-        filtered_logs = [self._filter_emotion_delta(log) for log in logs]
+        filtered_logs = []
+        for log in logs:
+            if log.get('type') == 'emotion_modified' and 'emotionDelta' in log:
+                # Only keep emotion entries with significant changes
+                log['emotionDelta'] = [
+                    delta for delta in log.get('emotionDelta', [])
+                    if self._filter_emotion_changes(delta)
+                ]
+            filtered_logs.append(log)
         
         # Append logs to file
         with open(log_file, 'a', encoding='utf-8') as f:
@@ -151,23 +153,21 @@ class LoggingService:
             if log.get('type') == 'emotion_modified' and 'emotionDelta' in log:
                 stats['total_modifications'] += 1
                 
-                # Filter only emotions with actual changes
-                significant_changes = []
+                # Only consider emotions with significant changes (using a higher threshold for stats)
                 for delta in log.get('emotionDelta', []):
                     emotion = delta.get('emotion')
                     if not emotion:
                         continue
+                        
+                    # Only process emotions with actual value changes
+                    if not self._filter_emotion_changes(delta, threshold=0.1):
+                        continue
                     
-                    try:
+                    try:    
                         from_val = float(delta.get('from', 0))
                         to_val = float(delta.get('to', 0))
                         
-                        # Only process emotions with actual value changes
-                        if abs(from_val - to_val) < 0.1:  # Ignore very small differences
-                            continue
-                            
-                        significant_changes.append(delta)
-                        
+                        # Initialize emotion stats if not already present
                         if emotion not in stats['emotion_changes']:
                             stats['emotion_changes'][emotion] = {
                                 'count': 0,
@@ -177,23 +177,16 @@ class LoggingService:
                                 'total_to': 0
                             }
                         
-                        stats['emotion_changes'][emotion]['count'] += 1
-                        stats['emotion_changes'][emotion]['total_from'] += from_val
-                        stats['emotion_changes'][emotion]['total_to'] += to_val
+                        # Update emotion stats
+                        emotion_stats = stats['emotion_changes'][emotion]
+                        emotion_stats['count'] += 1
+                        emotion_stats['total_from'] += from_val
+                        emotion_stats['total_to'] += to_val
                         
                         # Update averages
-                        count = stats['emotion_changes'][emotion]['count']
-                        stats['emotion_changes'][emotion]['avg_from'] = stats['emotion_changes'][emotion]['total_from'] / count
-                        stats['emotion_changes'][emotion]['avg_to'] = stats['emotion_changes'][emotion]['total_to'] / count
+                        emotion_stats['avg_from'] = emotion_stats['total_from'] / emotion_stats['count']
+                        emotion_stats['avg_to'] = emotion_stats['total_to'] / emotion_stats['count']
                     except (ValueError, TypeError):
                         continue
-                        
-                # Update the log with filtered delta if it's in the cache
-                user_id = log.get('userId')
-                if user_id in self.log_cache:
-                    for cached_log in self.log_cache[user_id]:
-                        if cached_log.get('timestamp') == log.get('timestamp') and cached_log.get('type') == 'emotion_modified':
-                            cached_log['emotionDelta'] = significant_changes
-                            break
         
         return stats

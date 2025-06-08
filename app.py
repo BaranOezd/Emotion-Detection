@@ -17,6 +17,22 @@ sentence_generator = SentenceGenerator(
 )
 logging_service = LoggingService(base_dir="user_logs")
 
+# Helper function for standardized error responses
+def error_response(message, status_code=400):
+    print(f"Error: {message}")
+    return jsonify({"error": message}), status_code
+
+# Helper function for standardized success responses
+def success_response(data):
+    return jsonify(data)
+
+# Helper for exception handling in routes
+def handle_endpoint_exception(e, endpoint_name):
+    error_msg = f"An error occurred during {endpoint_name}: {str(e)}"
+    print(error_msg)
+    print(traceback.format_exc())
+    return error_response(error_msg, 500)
+
 # Route for the main HTML page.
 @app.route('/')
 def index():
@@ -35,27 +51,25 @@ def analyze():
         data = request.json
         text = data.get("text", "").strip()
         if not text:
-            return jsonify({"error": "No text provided"}), 400
+            return error_response("No text provided")
 
         print("Starting analysis of text:", text[:100], "...")
         analysis = analyzer.analyze_dynamic_text(text)
         
         if not analysis or not analysis["results"]:
             print("Warning: No results returned from analyzer")
-            return jsonify({"error": "No valid results could be generated"}), 400
+            return error_response("No valid results could be generated")
 
         print(f"Analysis complete, returning {len(analysis['results'])} results")
         
         # Include structured data in the response
-        return jsonify({
+        return success_response({
             "results": analysis["results"],
             "structured_data": analysis.get("structured_data", {})
         })
         
     except Exception as e:
-        print(f"Error during analysis: {e}")
-        print(traceback.format_exc())
-        return jsonify({"error": f"An error occurred during analysis: {str(e)}"}), 500
+        return handle_endpoint_exception(e, "analysis")
 
 # Endpoint to modify a selected sentence based on new emotion levels.
 @app.route("/modify", methods=["POST"])
@@ -67,7 +81,7 @@ def modify_sentence():
         new_emotion_levels = data.get("new_emotions")
 
         if not original_sentence or not new_emotion_levels:
-            return jsonify({"error": "Sentence and new_emotions must be provided"}), 400
+            return error_response("Sentence and new_emotions must be provided")
 
         print("/modify endpoint triggered")
         # Generate the modified sentence
@@ -84,14 +98,12 @@ def modify_sentence():
         print("Top 3 actual emotions (normalized):", normalized_top_actual_emotions)
         
         # Return the new sentence and its emotion levels
-        return jsonify({
+        return success_response({
             "new_sentence": new_sentence,
             "emotion_levels": normalized_top_actual_emotions
         })
     except Exception as e:
-        print(f"Error during sentence modification: {e}")
-        print(traceback.format_exc())
-        return jsonify({"error": f"An error occurred during sentence modification: {str(e)}"}), 500
+        return handle_endpoint_exception(e, "sentence modification")
 
 # Endpoint to handle file uploads for analysis.
 @app.route("/upload", methods=["POST"])
@@ -99,25 +111,23 @@ def upload():
     try:
         print("/upload endpoint triggered")
         if 'file' not in request.files:
-            return jsonify({"error": "No file provided"}), 400
+            return error_response("No file provided")
 
         file = request.files['file']
         if file.filename.strip() == '':
-            return jsonify({"error": "No file selected"}), 400
+            return error_response("No file selected")
 
         content = file.read().decode('utf-8')
         if not content.strip():
-            return jsonify({"error": "Uploaded file is empty"}), 400
+            return error_response("Uploaded file is empty")
 
         print(f"File received: {file.filename}")
         print("Calling EmotionsAnalyzer...")
         results = analyzer.analyze_dynamic_text(content)
         print("Analysis complete")
-        return jsonify({"results": results["results"]})
+        return success_response({"results": results["results"]})
     except Exception as e:
-        print(f"Error during upload: {e}")
-        print(traceback.format_exc())
-        return jsonify({"error": f"An error occurred during file upload: {str(e)}"}), 500
+        return handle_endpoint_exception(e, "file upload")
 
 # Endpoint to handle interaction logs
 @app.route("/log-interaction", methods=["POST"])
@@ -125,19 +135,17 @@ def log_interaction():
     try:
         logs = request.json
         if not logs:
-            return jsonify({"error": "No logs provided"}), 400
+            return error_response("No logs provided")
         
         # Store logs with logging service
         num_logs = logging_service.store_logs(logs)
         
-        return jsonify({
+        return success_response({
             "success": True, 
             "message": f"Successfully stored {num_logs} log entries"
-        }), 200
+        })
     except Exception as e:
-        print(f"Error handling interaction logs: {e}")
-        print(traceback.format_exc())
-        return jsonify({"error": f"An error occurred while processing logs: {str(e)}"}), 500
+        return handle_endpoint_exception(e, "log processing")
 
 # Endpoint to retrieve user logs (protected, for admin use)
 @app.route("/admin/user-logs/<user_id>", methods=["GET"])
@@ -146,10 +154,9 @@ def get_user_logs(user_id):
         # In a real application, add authentication here
         limit = request.args.get('limit', 100, type=int)
         logs = logging_service.get_user_logs(user_id, limit=limit)
-        return jsonify({"logs": logs, "count": len(logs)}), 200
+        return success_response({"logs": logs, "count": len(logs)})
     except Exception as e:
-        print(f"Error retrieving user logs: {e}")
-        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
+        return handle_endpoint_exception(e, "retrieving user logs")
 
 # Endpoint to get emotion statistics
 @app.route("/admin/emotion-stats", methods=["GET"])
@@ -158,10 +165,9 @@ def get_emotion_stats():
         # In a real application, add authentication here
         user_id = request.args.get('user_id')
         stats = logging_service.get_emotion_delta_stats(user_id=user_id)
-        return jsonify(stats), 200
+        return success_response(stats)
     except Exception as e:
-        print(f"Error retrieving emotion statistics: {e}")
-        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
+        return handle_endpoint_exception(e, "retrieving emotion statistics")
 
 # Optional: Serve backend files (for debugging or additional resources).
 @app.route('/backend/<path:filename>')

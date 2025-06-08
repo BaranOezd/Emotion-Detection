@@ -1,14 +1,12 @@
 import MainController from './modules/MainController.js';
 import TutorialController from './modules/TutorialController.js';
-import { TrackingService } from './modules/TrackingService.js';
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Initialize tracking service first
-  const trackingService = new TrackingService();
-  window.trackingService = trackingService;
-  
   // Initialize the main app controller
   const mainController = new MainController();
+  
+  // Make dataService accessible globally for legacy code
+  window.dataService = mainController.dataService;
 
   // Initialize the tutorial controller
   const tutorialController = new TutorialController();
@@ -19,15 +17,23 @@ document.addEventListener("DOMContentLoaded", () => {
     // Show tutorial on first visit
     tutorialController.showTutorial();
     localStorage.setItem('hasSeenTutorial', 'true');
-    trackingService.logInteraction('tutorial_shown');
+    
+    // Log tutorial shown via dataService
+    mainController.dataService.logInteraction('tutorial_shown');
   }
 
   // Setup AI toggle functionality
   const toggleAIButton = document.getElementById("toggleAIButton");
   const changeButton = document.getElementById("changeSentenceButton");
   const resetButton = document.getElementById("resetButton");
+  const helpButton = document.getElementById("helpButton");
 
   let aiEnabled = true; // Track whether AI modifications are enabled
+
+  // Log help button clicks through dataService
+  helpButton.addEventListener("click", () => {
+    mainController.dataService.logHelpClicked();
+  });
 
   toggleAIButton.addEventListener("click", () => {
     aiEnabled = !aiEnabled;
@@ -39,20 +45,8 @@ document.addEventListener("DOMContentLoaded", () => {
     // Update toggle button text
     toggleAIButton.textContent = aiEnabled ? "Disable AI Modifications" : "Enable AI Modifications";
 
-    // Update AI modification state in the BarChartModule and tracking service
+    // Update AI modification state in BarChartModule and log via DataService
     mainController.barChartModule.setAIEnabled(aiEnabled);
-    trackingService.setAiEnabled(aiEnabled);
-  });
-  
-  // Add tracking for rewrite button
-  changeButton.addEventListener("click", () => {
-    trackingService.incrementRewriteCount();
-    trackingService.logInteraction('rewrite_initiated');
-  });
-  
-  // Add tracking for reset button
-  resetButton.addEventListener("click", () => {
-    trackingService.incrementResetCount();
-    trackingService.logInteraction('reset_initiated');
+    mainController.dataService.setAiEnabled(aiEnabled);
   });
 });
