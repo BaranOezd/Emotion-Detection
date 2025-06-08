@@ -10,6 +10,8 @@ __pycache__/
 # Logs and debug files
 *.log
 *.trace
+# User logs directory
+user_logs/
 
 # IDE and editor files
 .vscode/
