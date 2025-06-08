@@ -3,17 +3,19 @@ import traceback
 from flask import Flask, render_template, send_from_directory, request, jsonify
 from backend.emotion_analyzer import EmotionAnalyzer
 from backend.sentence_generator import SentenceGenerator
+from backend.logging_service import LoggingService
 
 # Initialize Flask app
 app = Flask(__name__, template_folder='./frontend', static_folder='./frontend')
 
-# Initialize analyzer and sentence generator with optimized parameters
+# Initialize analyzer, sentence generator, and logging service
 analyzer = EmotionAnalyzer()
 sentence_generator = SentenceGenerator(
     model_name="gpt-4.1-nano",
     max_tokens=100,
     analyzer=analyzer
 )
+logging_service = LoggingService(base_dir="user_logs")
 
 # Route for the main HTML page.
 @app.route('/')
@@ -116,6 +118,50 @@ def upload():
         print(f"Error during upload: {e}")
         print(traceback.format_exc())
         return jsonify({"error": f"An error occurred during file upload: {str(e)}"}), 500
+
+# Endpoint to handle interaction logs
+@app.route("/log-interaction", methods=["POST"])
+def log_interaction():
+    try:
+        logs = request.json
+        if not logs:
+            return jsonify({"error": "No logs provided"}), 400
+        
+        # Store logs with logging service
+        num_logs = logging_service.store_logs(logs)
+        
+        return jsonify({
+            "success": True, 
+            "message": f"Successfully stored {num_logs} log entries"
+        }), 200
+    except Exception as e:
+        print(f"Error handling interaction logs: {e}")
+        print(traceback.format_exc())
+        return jsonify({"error": f"An error occurred while processing logs: {str(e)}"}), 500
+
+# Endpoint to retrieve user logs (protected, for admin use)
+@app.route("/admin/user-logs/<user_id>", methods=["GET"])
+def get_user_logs(user_id):
+    try:
+        # In a real application, add authentication here
+        limit = request.args.get('limit', 100, type=int)
+        logs = logging_service.get_user_logs(user_id, limit=limit)
+        return jsonify({"logs": logs, "count": len(logs)}), 200
+    except Exception as e:
+        print(f"Error retrieving user logs: {e}")
+        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
+
+# Endpoint to get emotion statistics
+@app.route("/admin/emotion-stats", methods=["GET"])
+def get_emotion_stats():
+    try:
+        # In a real application, add authentication here
+        user_id = request.args.get('user_id')
+        stats = logging_service.get_emotion_delta_stats(user_id=user_id)
+        return jsonify(stats), 200
+    except Exception as e:
+        print(f"Error retrieving emotion statistics: {e}")
+        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
 # Optional: Serve backend files (for debugging or additional resources).
 @app.route('/backend/<path:filename>')

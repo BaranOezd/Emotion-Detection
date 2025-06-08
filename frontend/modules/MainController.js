@@ -376,6 +376,14 @@ class MainController {
   onReset(updatedSentenceData) {
     const indexToUpdate = updatedSentenceData.index;
     
+    // Log reset action with tracking service if available
+    if (window.trackingService) {
+      window.trackingService.logInteraction('reset_completed', {
+        sentenceId: indexToUpdate,
+        sentence: updatedSentenceData.sentence
+      });
+    }
+    
     // Ensure the original sentence text is also reset
     if (this.data[indexToUpdate].originalSentence) {
       updatedSentenceData.sentence = this.data[indexToUpdate].originalSentence;
@@ -421,6 +429,15 @@ class MainController {
 
     // Use the temporary emotion values from BarChart instead of sentenceData.emotions
     const emotionsToSend = this.barChartModule.getCurrentEmotionValues();
+    
+    // Log emotion change with tracking service if available
+    if (window.trackingService) {
+      window.trackingService.logEmotionChange(
+        sentenceData,
+        sentenceData.originalEmotions || {},
+        emotionsToSend
+      );
+    }
 
     // Create a copy of sentenceData with the temporary emotion values
     const dataToSend = {
@@ -465,8 +482,9 @@ class MainController {
           const selectedSentence = this.data[selectedIndex];
           selectedSentence.index = selectedIndex;
 
-          // Use skipAnimation true ONLY when it's the same sentence after a change
-          const skipAnimation = selectedIndex === currentIndex;
+          // ANIMATION FIX: Force animation after rewrite regardless of index
+          // Original code: const skipAnimation = selectedIndex === currentIndex;
+          const skipAnimation = false; // Always animate after rewrite
 
           // Render the bar chart with the updated real emotion values
           this.barChartModule.render(selectedSentence, {
@@ -524,7 +542,7 @@ class MainController {
       this.currentCountdownInterval = null;
     }
     
-    changeButton.textContent = "Change";
+    changeButton.textContent = "Rewrite";
     changeButton.disabled = false;
     changeButton.classList.remove('countdown-active'); // Remove styling class
   }

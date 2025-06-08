@@ -135,9 +135,9 @@ export default class BarChartModule {
   
     // Define drag behavior for interactive score adjustment.
     const drag = d3.drag()
-      .on("start", function (event, d) {
-        if (!this.aiEnabled) return; // Cancel drag if AI modifications are disabled
-        d3.select(this).style("opacity", 0.7);
+      .on("start", (event, d) => {  // Changed to arrow function
+        if (!this.aiEnabled) return; // Now this refers to the BarChartModule instance
+        d3.select(event.sourceEvent.target).style("opacity", 0.7);
       })
       .on("drag", (event, d) => {
         if (!this.aiEnabled) return; // Cancel drag if AI modifications are disabled
@@ -176,9 +176,9 @@ export default class BarChartModule {
           .style("left", (event.pageX + 10) + "px")
           .style("top", (event.pageY - 20) + "px");
       })
-      .on("end", function () {
+      .on("end", (event) => {  // Changed to arrow function
         if (!this.aiEnabled) return; // Cancel drag if AI modifications are disabled
-        d3.select(this).style("opacity", 1);
+        d3.select(event.sourceEvent.target).style("opacity", 1);
       });
     
     // Add checkboxes to the left of each bar with improved styling and logic

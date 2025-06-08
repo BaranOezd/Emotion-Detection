@@ -23,7 +23,7 @@ export class DataService {
 
       return data;
     } catch (error) {
-      console.error("❌ Error analyzing text:", error);
+      console.error("Error analyzing text:", error);
       throw error;
     }
   }
@@ -50,7 +50,7 @@ export class DataService {
     }
   }
 
-  async modifySentence(sentenceData) {
+  async modifySentence(sentenceData, originalEmotions = {}) {
     const payload = {
       sentence: sentenceData.sentence,
       new_emotions: sentenceData.emotions,
@@ -77,7 +77,27 @@ export class DataService {
 
       return data;
     } catch (error) {
-      console.error("❌ Error modifying sentence:", error);
+      console.error("Error modifying sentence:", error);
+      throw error;
+    }
+  }
+
+  async logInteractions(logs) {
+    try {
+      const response = await fetch(`${this.baseUrl}/log-interaction`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(logs),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Logging failed: ${response.status} - ${errorText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error logging interactions:", error);
       throw error;
     }
   }
