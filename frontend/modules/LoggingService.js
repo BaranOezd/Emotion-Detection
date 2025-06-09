@@ -17,16 +17,13 @@ export class LoggingService {
   
   // User ID and session tracking methods
   getOrCreateUserId() {
-    let userId = localStorage.getItem('userId');
-    if (!userId) {
-      const timestamp = Date.now();
-      const random = Math.floor(Math.random() * 1000);
-      userId = (timestamp + random) % 101;
-      if (userId === 0) userId = 1;
-      localStorage.setItem('userId', userId);
-    }
-    return parseInt(userId, 10);
+  let userId = localStorage.getItem('userId');
+  if (!userId) {
+    userId = Math.random().toString(36).substring(2, 10);  // 8 chars
+    localStorage.setItem('userId', userId);
   }
+  return userId;
+}
   
   generateSessionId() {
     return Date.now().toString(36) + Math.random().toString(36).substring(2);
