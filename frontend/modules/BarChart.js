@@ -168,14 +168,13 @@ export default class BarChartModule {
     const minFraction = 0.03;
     const dynamicMinWidth = x(minFraction);
   
-    // Define drag behavior for interactive score adjustment.
+    // Update the drag behavior to maintain color opacity
     const drag = d3.drag()
-      .on("start", (event, d) => {  // Changed to arrow function
-        if (!this.aiEnabled) return; // Now this refers to the BarChartModule instance
-        d3.select(event.sourceEvent.target).style("opacity", 0.7);
+      .on("start", (event, d) => {
+        if (!this.aiEnabled) return;
       })
       .on("drag", (event, d) => {
-        if (!this.aiEnabled) return; // Cancel drag if AI modifications are disabled
+        if (!this.aiEnabled) return;
         let newX = Math.max(0, Math.min(event.x, width));
         let newScore = x.invert(newX);
         newScore = Math.round(newScore * 20) / 20;
@@ -233,9 +232,10 @@ export default class BarChartModule {
           .style("left", (event.pageX + 10) + "px")
           .style("top", (event.pageY - 20) + "px");
       })
-      .on("end", (event) => {  // Changed to arrow function
-        if (!this.aiEnabled) return; // Cancel drag if AI modifications are disabled
-        d3.select(event.sourceEvent.target).style("opacity", 1);
+      .on("end", (event) => {
+        if (!this.aiEnabled) return;
+        // Don't reset opacity on drag end
+        // d3.select(event.sourceEvent.target).style("opacity", 1); // Remove this line
       });
     
     // Add checkboxes to the left of each bar with improved styling and logic
@@ -386,17 +386,16 @@ export default class BarChartModule {
       .attr("x", 0)
       .attr("height", y.bandwidth())
       .attr("width", d => {
-        // Extra validation to prevent NaN
         let widthValue;
         if (skipAnimation) {
           widthValue = Math.max(x(d.score || 0), dynamicMinWidth);
         } else {
           widthValue = Math.max(x(d.previousScore || 0), dynamicMinWidth);
         }
-        // Final safety check
         return isNaN(widthValue) ? dynamicMinWidth : widthValue;
       })
       .style("fill", d => this.emotionColors[d.emotion] || "#999")
+      .style("fill-opacity", 1) // Force full opacity
       .style("cursor", "pointer")
       .attr("tabindex", 0)
       .attr("aria-label", d => `${d.emotion}: ${Math.round(d.score * 100)}%`)
