@@ -1,40 +1,11 @@
+import { LoggingService } from './LoggingService.js';
+
 export class DataService {
   constructor(baseUrl = window.location.origin) {
     this.baseUrl = baseUrl;
-    this.userId = this.getOrCreateUserId();
-    this.sessionId = this.generateSessionId();
-    this.logQueue = [];
     this.counters = this.loadCounters();
     this.aiEnabled = true;
-    
-    // Set up periodic flush of logs
-    this.flushInterval = setInterval(() => this.flushLogs(), 30000);
-    
-    // Set up flush on page unload
-    window.addEventListener('beforeunload', () => this.flushLogs());
-  }
-  
-  // User ID and session tracking
-  getOrCreateUserId() {
-    let userId = localStorage.getItem('userId');
-    if (!userId) {
-      // Generate more unique ID: timestamp + random component, limited to range 0-100
-      const timestamp = Date.now();
-      const random = Math.floor(Math.random() * 1000);
-      
-      // Simple hashing to get a number between 0-100
-      userId = (timestamp + random) % 101;
-      
-      // Add a quick check to avoid the extremely rare case of userId=0
-      if (userId === 0) userId = 1;
-      
-      localStorage.setItem('userId', userId);
-    }
-    return parseInt(userId, 10);
-  }
-  
-  generateSessionId() {
-    return Date.now().toString(36) + Math.random().toString(36).substring(2);
+    this.logger = new LoggingService(baseUrl);
   }
   
   // Counter management
@@ -68,42 +39,9 @@ export class DataService {
     return this.counters.resetCount;
   }
 
-  // Logging core functionality
+  // Logging wrapper method
   logInteraction(type, data = {}) {
-    const log = {
-      userId: this.userId,
-      sessionId: this.sessionId,
-      timestamp: new Date().toISOString(),
-      type,
-      aiEnabled: this.aiEnabled,
-      rewriteCount: this.counters.rewriteCount,
-      resetCount: this.counters.resetCount,
-      ...data
-    };
-    
-    this.logQueue.push(log);
-    
-    if (this.logQueue.length > 20) {
-      this.flushLogs();
-    }
-    
-    console.log('[DataService] Logged interaction:', log);
-    return log;
-  }
-  
-  async flushLogs() {
-    if (this.logQueue.length === 0) return;
-    
-    const logsToSend = [...this.logQueue];
-    this.logQueue = [];
-    
-    try {
-      await this.sendLogs(logsToSend);
-    } catch (error) {
-      console.error('Error sending logs:', error);
-      // Put logs back in queue
-      this.logQueue = [...logsToSend, ...this.logQueue];
-    }
+    return this.logger.logInteraction(type, data, this.counters, this.aiEnabled);
   }
 
   // API Methods with integrated tracking
@@ -127,7 +65,7 @@ export class DataService {
         throw new Error("Invalid or empty response from server");
       }
       
-      // Log successful analysis
+      // Log successful analysis with duration in seconds
       const durationInSeconds = ((performance.now() - startTime) / 1000).toFixed(2);
       
       this.logInteraction('api_analyze', {
@@ -155,7 +93,6 @@ export class DataService {
 
   async uploadFile(file) {
     const startTime = performance.now();
-    this.logInteraction('upload_clicked');
     
     const formData = new FormData();
     formData.append("file", file);
@@ -173,11 +110,11 @@ export class DataService {
 
       const data = await response.json();
       
-      // Log successful upload
+      // Log successful upload without file name
       const durationInSeconds = ((performance.now() - startTime) / 1000).toFixed(2);
       
       this.logInteraction('api_upload', {
-        fileName: file.name,
+        // Removed: fileName: file.name, 
         fileType: file.type,
         fileSize: file.size,
         sentenceCount: data.results ? data.results.length : 0,
@@ -188,12 +125,12 @@ export class DataService {
     } catch (error) {
       console.error("Error during file upload:", error);
       
-      // Log failed upload
+      // Log failed upload without file name
       const durationInSeconds = ((performance.now() - startTime) / 1000).toFixed(2);
       
       this.logInteraction('api_error', {
         endpoint: 'upload',
-        fileName: file.name,
+        // Removed: fileName: file.name,
         error: error.message,
         duration: parseFloat(durationInSeconds)
       });
@@ -281,10 +218,10 @@ export class DataService {
     return emotionDelta;
   }
   
+  // Convenience logging methods
   logResetAction(sentenceData) {
     this.incrementResetCount();
-    this.logInteraction('reset_initiated', {
-    });
+    this.logInteraction('reset_initiated', {});
   }
   
   logHelpClicked() {
@@ -295,32 +232,8 @@ export class DataService {
     this.logInteraction('upload_clicked');
   }
 
-  // Add logEmotionChange method
   logEmotionChange(sentenceData, originalEmotions, newEmotions) {
     const emotionDelta = this.calculateEmotionDelta(originalEmotions, newEmotions);
-    
-    this.logInteraction('emotion_modified', {
-      emotionDelta
-    });
-  }
-
-  async sendLogs(logs) {
-    try {
-      const response = await fetch(`${this.baseUrl}/log-interaction`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(logs),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Logging failed: ${response.status} - ${errorText}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error("Error logging interactions:", error);
-      throw error;
-    }
+    this.logInteraction('emotion_modified', { emotionDelta });
   }
 }

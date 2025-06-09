@@ -57,23 +57,54 @@
       <h2>Welcome to Emotion Analyzer!</h2>
       <div class="tutorial-grid">
         <div class="tutorial-section">
-          <h3><span class="tutorial-number">1</span> Adding Text</h3>
+          <h3><span class="tutorial-number">1</span> Text & Upload</h3>
           <p>
-            You can type directly in the text editor or use the "Upload" button to analyze a text file.<br>
-            To see the emotion levels, click on the sentence.<br>Good Practice: Don't forget about the punctiations!
+            Type directly in the text editor or click "Upload" to analyze a text file.
+            The system automatically breaks your text into sentences for analysis.
+            Each sentence can be selected to view and modify its emotions.
           </p>
         </div>
         <div class="tutorial-section">
-          <h3><span class="tutorial-number">2</span> Understanding Line Chart</h3>
-          <p>The left panel shows emotion trends across your text. Each line represents an emotion. Click on the graphs to focus on that sentence.</p>
+          <h3><span class="tutorial-number">2</span> Line Chart Overview</h3>
+          <p>
+            The left panel shows emotion trends across your entire text. 
+            Each colored line represents an emotion's intensity throughout sentences.
+            Click directly on lines or points to jump to that sentence.
+          </p>
         </div>
         <div class="tutorial-section">
-          <h3><span class="tutorial-number">3</span> Using Bar Chart</h3>
-          <p>The right panel shows emotion levels for the selected sentence. Drag the bars to adjust emotion intensity. Click checkboxes to filter emotions, or use Shift+Click for multiple selections. Use the Undo button to reset changes to their original values.</p>
+          <h3><span class="tutorial-number">3</span> Bar Chart Interactions</h3>
+          <p>
+            The right panel shows emotion values for the selected sentence.
+            <strong>Drag the bars</strong> to adjust emotion intensity.
+            Use <strong>checkboxes</strong> for filtering the line chart: click one emotion to focus on it, 
+            or use Shift+Click for multiple selections.            
+          </p>
         </div>
         <div class="tutorial-section">
-          <h3><span class="tutorial-number">4</span> Rewriting Sentences</h3>
-          <p>After adjusting emotions, click Rewrite button to generate a new sentence. If you don't like the changes, use Undo button to previous the original sentence and emotion levels.</p>
+          <h3><span class="tutorial-number">4</span> Emotion Modification</h3>
+          <p>
+            After adjusting emotions with the bars, click <strong>Rewrite</strong> to generate a new sentence reflecting those emotions.
+            If you don't like the result, click <strong>Undo</strong> to restore the original sentence and emotions.
+            Toggle AI features on/off using the button at the bottom.
+          </p>
+        </div>
+        <div class="tutorial-section">
+          <h3><span class="tutorial-number">5</span> Navigation Tips</h3>
+          <p>
+            Click on a sentence in the text editor to select it.
+            As you scroll through the text, the line chart automatically highlights visible sentences.
+            Your work is automatically saved in your browser.
+          </p>
+        </div>
+        <div class="tutorial-section">
+          <h3><span class="tutorial-number">6</span> Using the AI Features</h3>
+          <p>
+            The AI analyzes the emotional content of your text automatically.
+            When rewriting, the AI attempts to match your adjusted emotion values.
+            If AI modifications are disabled, you can still view emotions but not modify sentences.
+            Click "Help" anytime to see this guide again.
+          </p>
         </div>
       </div>
       <div class="button-container">
@@ -82,6 +113,10 @@
     </div>
   </div>
   
+  <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+    <div class="spinner"></div>
+  </div>
+
   <script type="module" src="app.js"></script>
 </body>
 

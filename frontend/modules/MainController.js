@@ -254,8 +254,8 @@ class MainController {
   setLoading(isLoading) {
     const loadingIndicator = document.getElementById("loadingIndicator");
     const uploadButton = document.getElementById("uploadButton");
-    loadingIndicator.style.display = isLoading ? "block" : "none";
-    uploadButton.disabled = isLoading;
+      loadingIndicator.style.display = isLoading ? "block" : "none";
+      uploadButton.disabled = isLoading;
   }
   
   showFeedback(message, isError = false) {
