@@ -143,8 +143,9 @@ export class DataService {
     const startTime = performance.now();
     this.incrementRewriteCount();
     
-    // Capture original emotions to track delta later
+    // Capture original emotions and intended emotions
     const originalEmotions = sentenceData.originalEmotions || {};
+    const intendedEmotions = sentenceData.emotions || {};
     
     const payload = {
       sentence: sentenceData.sentence,
@@ -170,15 +171,16 @@ export class DataService {
         throw new Error(data.error);
       }
       
-      // Log emotion deltas without sentence text or ID
-      const emotionDelta = this.calculateEmotionDelta(originalEmotions, data.emotion_levels);
+      // Log both intended and actual emotion changes
+      const intendedDelta = this.calculateEmotionDelta(originalEmotions, intendedEmotions);
+      const actualDelta = this.calculateEmotionDelta(originalEmotions, data.emotion_levels);
       
-      // Convert duration from milliseconds to seconds with 2 decimal places
       const durationInSeconds = ((performance.now() - startTime) / 1000).toFixed(2);
       
       this.logInteraction('emotion_modified', {
-        emotionDelta,
-        duration: parseFloat(durationInSeconds) // Convert to number after formatting
+        intendedEmotions: intendedDelta,
+        actualEmotions: actualDelta,
+        duration: parseFloat(durationInSeconds)
       });
 
       return data;
@@ -201,18 +203,22 @@ export class DataService {
   
   calculateEmotionDelta(originalEmotions, newEmotions) {
     const emotionDelta = [];
+    const significanceThreshold = 0.05; // Only log changes greater than 5%
     
     // Calculate the delta between original and new emotions
     const allEmotions = new Set([...Object.keys(originalEmotions), ...Object.keys(newEmotions)]);
     allEmotions.forEach(emotion => {
-      const from = originalEmotions[emotion] || 0;
-      const to = newEmotions[emotion] || 0;
+      const from = parseFloat(originalEmotions[emotion] || 0);
+      const to = parseFloat(newEmotions[emotion] || 0);
       
-      emotionDelta.push({
-        emotion,
-        from: parseFloat(from).toFixed(2),
-        to: parseFloat(to).toFixed(2)
-      });
+      // Only include emotions with significant changes
+      if (Math.abs(to - from) >= significanceThreshold) {
+        emotionDelta.push({
+          emotion,
+          from: from.toFixed(2),
+          to: to.toFixed(2)
+        });
+      }
     });
     
     return emotionDelta;
