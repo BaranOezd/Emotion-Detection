@@ -4,7 +4,7 @@
 export class LoggingService {
   constructor(baseUrl = window.location.origin) {
     this.baseUrl = baseUrl;
-    this.userId = this.getOrCreateUserId();
+    this.userId = null; // Will be set asynchronously
     this.sessionId = this.generateSessionId();
     this.logQueue = [];
     this.flushInterval = setInterval(() => this.flushLogs(), 30000);
@@ -13,29 +13,70 @@ export class LoggingService {
     // Tracking variables for differential logging
     this._lastCounters = {};
     this._lastAiEnabled = true;
+
+    // Only prompt for userId if not already set
+    this._initUserId();
   }
-  
-  // User ID and session tracking methods
-  getOrCreateUserId() {
-  let userId = localStorage.getItem('userId');
-  if (!userId) {
-    userId = Math.random().toString(36).substring(2, 10);  // 8 chars
-    localStorage.setItem('userId', userId);
+
+  async _initUserId() {
+    // Only prompt if not already in localStorage
+    this.userId = await this.getUserIdFromModal();
   }
-  return userId;
-}
-  
+
+  // User ID logic using modal
+  getUserIdFromModal() {
+    let userId = localStorage.getItem('userId');
+    if (userId) {
+      userId = userId.trim().toLowerCase();
+      if (userId) {
+        localStorage.setItem('userId', userId);
+        return Promise.resolve(userId);
+      }
+    }
+
+    // Show modal
+    const modal = document.getElementById('userIdModal');
+    const input = document.getElementById('userIdInput');
+    const button = document.getElementById('userIdSubmitButton');
+    modal.classList.remove('hidden');
+    input.value = '';
+    input.focus();
+
+    return new Promise(resolve => {
+      const submit = () => {
+        let val = input.value.trim().toLowerCase();
+        if (val) {
+          localStorage.setItem('userId', val);
+          modal.classList.add('hidden');
+          resolve(val);
+        } else {
+          input.focus();
+        }
+      };
+      button.onclick = submit;
+      input.onkeydown = e => {
+        if (e.key === 'Enter') submit();
+      };
+    });
+  }
+
   generateSessionId() {
     return Date.now().toString(36) + Math.random().toString(36).substring(2);
   }
 
   // Core logging functionality
   logInteraction(type, data = {}, counters = {}, aiEnabled = true) {
+    // If userId is a Promise (not yet resolved), skip logging until resolved
+    if (!this.userId || typeof this.userId.then === 'function') return;
+
+    // Always use trimmed, lowercased userId
+    const safeUserId = typeof this.userId === 'string' ? this.userId.trim().toLowerCase() : this.userId;
+
     // Create an optimized log structure
     const log = {
-      userId: this.userId,
+      userId: safeUserId,
       sessionId: this.sessionId,
-      timestamp: new Date().toISOString(),
+      timestamp: this._getCETTimestamp(),
       type,
       // Only include counters that changed since last log
       ...(this._hasCounterChanged('rewriteCount', counters.rewriteCount) && 
@@ -51,7 +92,6 @@ export class LoggingService {
     
     // Update tracking values
     this._updateTrackedValues(counters, aiEnabled);
-    
     this.logQueue.push(log);
     
     if (this.logQueue.length > 20) {
@@ -179,5 +219,26 @@ export class LoggingService {
       console.error("Error logging interactions:", error);
       throw error;
     }
+  }
+
+  // CET timestamp helper
+  _getCETTimestamp() {
+    const date = new Date();
+    // Central European Time (CET/CEST) is UTC+1 or UTC+2 (with DST)
+    // Use 'Europe/Berlin' as a canonical CET/CEST zone
+    const options = {
+      timeZone: 'Europe/Berlin',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    };
+    // Format: DD.MM.YYYY HH:mm:ss
+    const parts = new Intl.DateTimeFormat('en-GB', options).formatToParts(date);
+    const get = type => parts.find(p => p.type === type)?.value;
+    return `${get('day')}.${get('month')}.${get('year')} ${get('hour')}:${get('minute')}:${get('second')}`;
   }
 }

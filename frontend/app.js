@@ -1,10 +1,13 @@
 import MainController from './modules/MainController.js';
 import TutorialController from './modules/TutorialController.js';
 
-document.addEventListener("DOMContentLoaded", () => {
-  // Initialize the main app controller
+document.addEventListener("DOMContentLoaded", async () => {
   const mainController = new MainController();
-  
+  // Wait for userId to be set (async)
+  if (mainController.dataService.logger.userId instanceof Promise || !mainController.dataService.logger.userId) {
+    mainController.dataService.logger.userId = await mainController.dataService.logger.getUserIdFromModal();
+  }
+
   // Make dataService accessible globally for legacy code
   window.dataService = mainController.dataService;
 

@@ -103,7 +103,7 @@
             The AI analyzes the emotional content of your text automatically.
             When rewriting, the AI attempts to match your adjusted emotion values.
             If AI modifications are disabled, you can still view emotions but not modify sentences.
-            Click "Help" anytime to see this guide again.
+            Click "?" button anytime to see this guide again.
           </p>
         </div>
       </div>
@@ -115,6 +115,15 @@
   
   <div id="loadingIndicator" class="loading-indicator" style="display: none;">
     <div class="spinner"></div>
+  </div>
+
+  <!-- User ID Modal -->
+  <div id="userIdModal" class="user-id-modal hidden">
+    <div class="user-id-modal-content">
+      <label for="userIdInput">Please enter your User ID:</label>
+      <input id="userIdInput" type="text" autocomplete="off" required />
+      <button id="userIdSubmitButton">Submit</button>
+    </div>
   </div>
 
   <script type="module" src="app.js"></script>

@@ -565,3 +565,52 @@ button.processing::after {
   border-radius: 50%;
   animation: pulse 0.8s infinite ease-in-out;
 }
+
+/* User ID Modal Styles */
+.user-id-modal {
+  position: fixed;
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.user-id-modal.hidden {
+  display: none;
+}
+.user-id-modal-content {
+  background: #fff;
+  padding: 2em 2.5em;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  text-align: center;
+  min-width: 260px;
+}
+.user-id-modal-content label {
+  display: block;
+  margin-bottom: 1em;
+  font-size: 1.1em;
+  color: var(--color-text);
+}
+.user-id-modal-content input[type="text"] {
+  width: 80%;
+  padding: 0.5em;
+  margin-bottom: 1em;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-sm);
+  font-size: 1em;
+}
+.user-id-modal-content button {
+  padding: 0.5em 1.5em;
+  font-size: 1em;
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.user-id-modal-content button:hover {
+  background: var(--color-primary-dark);
+}
