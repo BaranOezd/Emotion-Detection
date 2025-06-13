@@ -114,7 +114,6 @@ export class DataService {
       const durationInSeconds = ((performance.now() - startTime) / 1000).toFixed(2);
       
       this.logInteraction('api_upload', {
-        // Removed: fileName: file.name, 
         fileType: file.type,
         fileSize: file.size,
         sentenceCount: data.results ? data.results.length : 0,
