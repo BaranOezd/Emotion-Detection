@@ -422,8 +422,8 @@ class MainController {
     // Disable all interactive elements during generation
     this.setGenerating(true);
 
-    // Start countdown for 30 seconds
-    this.currentCountdownInterval = this.startButtonCountdown(30);
+    // Start countdown for 20 seconds
+    this.currentCountdownInterval = this.startButtonCountdown(20);
 
     // Use the temporary emotion values from BarChart instead of sentenceData.emotions
     const emotionsToSend = this.barChartModule.getCurrentEmotionValues();

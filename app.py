@@ -12,8 +12,7 @@ app = Flask(__name__, template_folder='./frontend', static_folder='./frontend')
 analyzer = EmotionAnalyzer()
 sentence_generator = SentenceGenerator(
     model_name="gpt-4.1-nano",
-    max_tokens=100,
-    analyzer=analyzer
+    max_tokens=100
 )
 logging_service = LoggingService(base_dir="user_logs")
 

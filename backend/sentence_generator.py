@@ -12,47 +12,61 @@ from pathlib import Path
 env_path = Path(__file__).resolve().parent.parent / ".env"
 print(f"Looking for .env file at: {env_path}")
 
-# Step 2: Load the .env file
 load_dotenv(dotenv_path=env_path, override=True)
-
-# Step 3: Get and sanitize the API key
 api_key = os.getenv("OPENAI_API_KEY", "").strip().replace('\ufeff', '')
 
-# Step 4: Check and print for debugging
 if not api_key.startswith("sk-"):
     raise Exception(f"Invalid API key loaded")
 
 openai.api_key = api_key
 
 class SentenceGenerator:
-    def __init__(self, model_name="gpt-4.1-nano", max_tokens=100, analyzer=None):
+    def __init__(self, model_name="gpt-4.1-nano", max_tokens=100):
         """
         Initialize the generator with the specified OpenAI model.
         :param model_name: The name of the OpenAI model to use.
         :param max_tokens: Maximum tokens for the generated response.
-        :param analyzer: An instance of EmotionsAnalyzer for emotion analysis.
         """
         self.model_name = model_name
         self.max_tokens = max_tokens
         self.max_attempts = 3  # Fixed maximum attempts
-        self.rmse_target = 0.10  # Target for acceptable emotion match
-        self.emotion_threshold = 0.12  # Threshold for individual emotion matches
-        self.analyzer = analyzer if analyzer else EmotionAnalyzer(model_name="SamLowe/roberta-base-go_emotions")
-        self.batch_size = 30  # Number of sentences per batch
-        self.keep_best = 5    # Number of best sentences to keep
+        self.emotion_threshold = 0.12 
+        self.emotion_model_name = "SamLowe/roberta-base-go_emotions"
+        self.analyzer = EmotionAnalyzer(model_name=self.emotion_model_name)
+        self.batch_size = 50  
+        self.keep_best = 8   
+        self.max_concurrent_requests = 32 
 
     def _log(self, message):
         """Simple console logging"""
         print(message)
 
+    async def _analyze_emotions_async(self, sentence, user_top_emotions, loop=None):
+        loop = loop or asyncio.get_event_loop()
+        emotions = await loop.run_in_executor(None, self.analyzer.analyze_emotions, sentence)
+        rmse, matches = self._calculate_rmse(user_top_emotions, emotions)
+        return (sentence, emotions, rmse)
+
     def _process_batch_results(self, batch, user_top_emotions):
-        """Process and analyze batch results."""
-        batch_results = []
-        for sentence in batch:
-            emotions = self.analyzer.analyze_emotions(sentence)
-            rmse, matches = self._calculate_rmse(user_top_emotions, emotions)
-            batch_results.append((sentence, emotions, rmse))
-        
+        """Process and analyze batch results in parallel with higher concurrency."""
+        if not batch:
+            return []
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            semaphore = asyncio.Semaphore(self.max_concurrent_requests)
+            async def analyze_with_semaphore(sentence):
+                async with semaphore:
+                    return await self._analyze_emotions_async(sentence, user_top_emotions, loop)
+            tasks = [
+                analyze_with_semaphore(sentence)
+                for sentence in batch
+            ]
+            batch_results = loop.run_until_complete(asyncio.gather(*tasks))
+        finally:
+            loop.close()
+
         # Sort by RMSE
         batch_results.sort(key=lambda x: x[2])
         return batch_results
@@ -62,27 +76,47 @@ class SentenceGenerator:
         top_emotions = dict(sorted(emotions.items(), key=lambda x: x[1], reverse=True)[:top_n])
         return {k: round(v, 2) for k, v in top_emotions.items()}
 
+    async def _generate_sentence_with_retry(self, session, sentence, user_top_emotions, semaphore, retries=2):
+        for attempt in range(retries + 1):
+            try:
+                async with semaphore:
+                    return await asyncio.wait_for(
+                        self._generate_sentence_async(session, sentence, user_top_emotions),
+                        timeout=40
+                    )
+            except Exception as e:
+                if attempt < retries:
+                    print(f"Retrying sentence generation (attempt {attempt+2}) due to error: {e}")
+                    await asyncio.sleep(1)
+                else:
+                    print(f"Failed to generate sentence after {retries+1} attempts: {e}")
+                    return sentence  # fallback to original
+
     async def _generate_sentences_batch(self, sentences, user_top_emotions):
         """Generate multiple sentences concurrently"""
-        tasks = []
         sentences_per_source = max(1, self.batch_size // len(sentences))  # Distribute batch size evenly
         total_sentences = len(sentences) * sentences_per_source
         print(f"\nGenerating {total_sentences} sentences (using {len(sentences)} seed sentences)...")
         
+        semaphore = asyncio.Semaphore(self.max_concurrent_requests)
         async with aiohttp.ClientSession() as session:
+            tasks = []
             for sentence in sentences:
                 for _ in range(sentences_per_source):
-                    task = self._generate_sentence_async(session, sentence, user_top_emotions)
-                    tasks.append(task)
-            
-            # Process sentences as they complete
+                    tasks.append(
+                        self._generate_sentence_with_retry(session, sentence, user_top_emotions, semaphore)
+                    )
             completed = []
-            for task in asyncio.as_completed(tasks):
-                sentence = await task
-                completed.append(sentence)
-                print(f"\nSentence {len(completed)}/{total_sentences} generated:")
-                print(f"Text: {sentence[:100]}...")
-            
+            errors = 0
+            for idx, task in enumerate(asyncio.as_completed(tasks), 1):
+                try:
+                    result = await task
+                    completed.append(result)
+                    print(f"\rSentence {len(completed)}/{total_sentences} generated", end="", flush=True)
+                except Exception as e:
+                    errors += 1
+                    print(f"\nError in sentence generation: {e}")
+            print(f"\nBatch complete: {len(completed)} generated, {errors} errors.")
             return completed
 
     def generate_modified_sentence(self, original_sentence, new_emotion_levels):
@@ -100,27 +134,34 @@ class SentenceGenerator:
         print(f"User's top three emotions (normalized): {user_top_emotions}")
         
         # Initialize the batch system
-        best_sentences = [original_sentence]
+        best_sentences = [original_sentence] * min(3, self.keep_best)
         overall_best_rmse = float('inf')
         overall_best_sentence = original_sentence
-        overall_best_emotions = None
         
         attempt = 0
         while attempt < self.max_attempts:
             batch_start = time.time()
             attempt += 1
             self._log(f"\nBatch {attempt}/{self.max_attempts}")
-            
-            # Create and run a new event loop for each batch
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+
+            # Use a try/except to catch interpreter shutdown or event loop errors
             try:
-                batch = loop.run_until_complete(
-                    self._generate_sentences_batch(best_sentences, user_top_emotions)
-                )
-            finally:
-                loop.close()
-            
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    batch = loop.run_until_complete(
+                        self._generate_sentences_batch(best_sentences, user_top_emotions)
+                    )
+                finally:
+                    loop.close()
+            except RuntimeError as e:
+                # Handle interpreter shutdown or event loop closed errors gracefully
+                if "cannot schedule new futures after interpreter shutdown" in str(e) or "Event loop is closed" in str(e):
+                    self._log("Server interpreter has shut down or event loop is closed. Cannot process further requests.")
+                    raise Exception("Server is shutting down or restarting. Please try again later.")
+                else:
+                    raise
+
             print("\nAnalyzing emotions for generated sentences...")
             batch_results = self._process_batch_results(batch, user_top_emotions)
 
@@ -133,21 +174,20 @@ class SentenceGenerator:
             if batch_results[0][2] < overall_best_rmse:
                 overall_best_rmse = batch_results[0][2]
                 overall_best_sentence = batch_results[0][0]
-                overall_best_emotions = batch_results[0][1]
                 print(f"\nNew best sentence found with RMSE {overall_best_rmse:.4f}")
                 self._log(f"New best sentence found!")
                 self._log(f"RMSE: {overall_best_rmse:.4f}")
                 
-                # Stop if we achieve target RMSE
-                if overall_best_rmse <= self.rmse_target:
-                    self._log(f"\n✓ Found sentence with target RMSE! Stopping.")
+                # Stop if we achieve target emotion_threshold
+                if overall_best_rmse <= self.emotion_threshold:
+                    self._log(f"\n✓ Found sentence with target emotion threshold! Stopping.")
                     self._log(f"Total generation time: {time.time() - start_time:.2f} seconds")
                     return overall_best_sentence
             
             # Keep best sentences for next iteration
             best_sentences = [result[0] for result in batch_results[:self.keep_best]]
         
-        self._log(f"\n! Hit maximum attempts ({self.max_attempts}) without reaching target RMSE.")
+        self._log(f"\n! Hit maximum attempts ({self.max_attempts}) without reaching target emotion threshold.")
         self._log(f"Returning best sentence after all batches")
         self._log(f"Best RMSE achieved: {overall_best_rmse:.4f}")
         self._log(f"Total generation time: {time.time() - start_time:.2f} seconds")
