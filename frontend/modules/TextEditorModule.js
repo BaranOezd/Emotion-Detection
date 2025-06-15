@@ -29,6 +29,9 @@ export default class TextEditorModule {
     // Track cursor with simpler events
     this.editor.addEventListener("click", this.saveCursorPosition.bind(this));
     this.editor.addEventListener("keyup", this.saveCursorPosition.bind(this));
+    
+    // Add paste event to always paste as plain text
+    this.editor.addEventListener("paste", this._handlePasteAsPlainText.bind(this));
   }
   
   /**
@@ -391,5 +394,20 @@ export default class TextEditorModule {
       firstVisibleIndex: parseInt(visibleSentences[0].getAttribute("data-index"), 10),
       lastVisibleIndex: parseInt(visibleSentences[visibleSentences.length - 1].getAttribute("data-index"), 10)
     };
+  }
+
+  /**
+   * Handle paste events to always paste as plain text
+   * @private
+   */
+  _handlePasteAsPlainText(event) {
+    event.preventDefault();
+    let text = '';
+    if (event.clipboardData) {
+      text = event.clipboardData.getData('text/plain');
+    } else if (window.clipboardData) {
+      text = window.clipboardData.getData('Text');
+    }
+    document.execCommand('insertText', false, text);
   }
 }
