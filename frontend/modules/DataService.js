@@ -13,7 +13,8 @@ export class DataService {
     const savedCounters = localStorage.getItem('interactionCounters');
     return savedCounters ? JSON.parse(savedCounters) : { 
       rewriteCount: 0,
-      resetCount: 0
+      resetCount: 0,
+      sentenceCount: 0  // Add sentence count
     };
   }
   
@@ -21,6 +22,11 @@ export class DataService {
     localStorage.setItem('interactionCounters', JSON.stringify(this.counters));
   }
   
+  updateSentenceCount(count) {
+    this.counters.sentenceCount = count;
+    this.saveCounters();
+  }
+
   // AI state management
   setAiEnabled(enabled) {
     this.aiEnabled = enabled;
@@ -64,6 +70,9 @@ export class DataService {
       if (!data.results || !Array.isArray(data.results) || data.results.length === 0) {
         throw new Error("Invalid or empty response from server");
       }
+      
+      // Update sentence count when we get results
+      this.updateSentenceCount(data.results.length);
       
       // Log successful analysis with duration in seconds
       const durationInSeconds = ((performance.now() - startTime) / 1000).toFixed(2);

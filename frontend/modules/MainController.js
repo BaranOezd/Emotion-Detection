@@ -267,9 +267,12 @@ class MainController {
   
   updateEmotions() {
     if (this.data.length > 0) {
-      this.emotions = Object.keys(this.data[0].emotions); // Dynamically update emotions
+      this.emotions = Object.keys(this.data[0].emotions);
+      // Update sentence count when emotions are updated
+      this.dataService.updateSentenceCount(this.data.length);
     } else {
       this.emotions = [];
+      this.dataService.updateSentenceCount(0);
     }
   }
   

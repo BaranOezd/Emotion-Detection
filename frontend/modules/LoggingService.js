@@ -72,33 +72,34 @@ export class LoggingService {
     // Always use trimmed, lowercased userId
     const safeUserId = typeof this.userId === 'string' ? this.userId.trim().toLowerCase() : this.userId;
 
-    // Create an optimized log structure
+    // Do not log api_analyze events
+    if (type === 'api_analyze') return;
+
+    // Always include rewriteCount, resetCount, aiEnabled, and sentenceCount in every log
     const log = {
       userId: safeUserId,
       sessionId: this.sessionId,
       timestamp: this._getCETTimestamp(),
       type,
-      // Only include counters that changed since last log
-      ...(this._hasCounterChanged('rewriteCount', counters.rewriteCount) && 
-          { rewriteCount: counters.rewriteCount }),
-      ...(this._hasCounterChanged('resetCount', counters.resetCount) && 
-          { resetCount: counters.resetCount }),
-      // Only include aiEnabled when it changes or for specific events
-      ...(this._lastAiEnabled !== aiEnabled || type === 'ai_toggle' ? 
-          { aiEnabled } : {}),
-      // Add filtered data
+      rewriteCount: counters.rewriteCount,
+      resetCount: counters.resetCount,
+      aiEnabled: aiEnabled,
+      sentenceCount:
+        (typeof counters.sentenceCount !== "undefined" && counters.sentenceCount !== null)
+          ? counters.sentenceCount
+          : (typeof data.sentenceCount !== "undefined" ? data.sentenceCount : undefined),
       ...this._filterLogData(type, data)
     };
-    
+
     // Update tracking values
     this._updateTrackedValues(counters, aiEnabled);
     this.logQueue.push(log);
-    
+
     if (this.logQueue.length > 20) {
       this.flushLogs();
     }
-    
-    console.log('[LoggingService] Logged interaction:', log);
+
+    //console.log('[LoggingService] Logged interaction:', log);
     return log;
   }
   
