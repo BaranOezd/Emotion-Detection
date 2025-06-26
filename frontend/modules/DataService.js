@@ -78,6 +78,7 @@ export class DataService {
       const durationInSeconds = ((performance.now() - startTime) / 1000).toFixed(2);
       
       this.logInteraction('api_analyze', {
+        text: text, // Include the original text
         textLength: text.length,
         sentenceCount: data.results.length,
         duration: parseFloat(durationInSeconds)
