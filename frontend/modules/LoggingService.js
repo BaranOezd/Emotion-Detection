@@ -72,9 +72,6 @@ export class LoggingService {
     // Always use trimmed, lowercased userId
     const safeUserId = typeof this.userId === 'string' ? this.userId.trim().toLowerCase() : this.userId;
 
-    // Do not log api_analyze events
-    if (type === 'api_analyze') return;
-
     // Always include rewriteCount, resetCount, aiEnabled, and sentenceCount in every log
     const log = {
       userId: safeUserId,
@@ -143,6 +140,18 @@ export class LoggingService {
       if (data.duration) {
         filteredData.duration = parseFloat(data.duration.toFixed(2));
       }
+    } else if (type === 'api_analyze') {
+      // Special case for api_analyze: preserve the text field
+      if (data.text) {
+        filteredData.text = data.text;
+      }
+      
+      // Also include other non-sensitive fields
+      Object.keys(data).forEach(key => {
+        if (key !== 'text' && !['sentence', 'newSentence', 'context'].includes(key)) {
+          filteredData[key] = data[key];
+        }
+      });
     } else {
       Object.keys(data).forEach(key => {
         // Skip sensitive fields
