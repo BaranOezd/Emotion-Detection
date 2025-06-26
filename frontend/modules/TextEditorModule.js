@@ -4,7 +4,7 @@ export default class TextEditorModule {
     this.scrollCallbacks = [];
     this.changeCallbacks = [];
     this.debounceTimeout = null;
-    this.debounceDelay = 4000; 
+    this.debounceDelay = 8000; 
     this.cursorPosition = null; // Store cursor as character offset instead of range
     
     if (!this.editor) {
@@ -35,7 +35,7 @@ export default class TextEditorModule {
   }
   
   /**
-   * Save cursor position as character offset
+   * Save cursor position as character offset 
    */
   saveCursorPosition() {
     if (!this.editor) return;
