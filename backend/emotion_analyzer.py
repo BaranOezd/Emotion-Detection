@@ -7,6 +7,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from multiprocessing import cpu_count
 
 class EmotionAnalyzer:
+    # Class-level variable to track if the model has been loaded
+    _is_model_loaded = False
+    
     def __init__(self, model_name="SamLowe/roberta-base-go_emotions"):
         self.model_name = model_name
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -19,26 +22,47 @@ class EmotionAnalyzer:
         max_workers = max(1, cpu_count() - 1)
         self.thread_executor = ThreadPoolExecutor(max_workers=max_workers)        
         self._cache = {}
-        self.tokenizer = None  # Initialize tokenizer as None
-        self.model = None      # Initialize model as None
+        self.tokenizer = None
+        self.model = None
         self.emotion_labels = None
-        self._initialize_model()  # Pre-load model
+        
+        # Load the model when app initializes
+        self._initialize_model()
 
     def _initialize_model(self):
-        """Pre-load model during initialization."""
-        if not self.tokenizer or not self.model:
+        """Load model only if not already loaded"""
+        if not EmotionAnalyzer._is_model_loaded:
             print(f"Loading model '{self.model_name}'...")
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
             self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name).to(self.device)
             self.model.eval()
             self.emotion_labels = list(self.model.config.id2label.values())
             print(f"Model loaded successfully on {self.device}")
-        if torch.cuda.is_available():
-            self._process_batch(["warmup text"])  # Warmup run for CUDA
+            
+            if torch.cuda.is_available():
+                self._process_batch(["warmup text"])  # Warmup run for CUDA
+            
+            EmotionAnalyzer._is_model_loaded = True
+        elif self.tokenizer is None or self.model is None:
+            # If class says model is loaded but this instance doesn't have it
+            # (could happen with multiple instances)
+            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+            self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name).to(self.device)
+            self.model.eval()
+            self.emotion_labels = list(self.model.config.id2label.values())
+
+    # Alias for _initialize_model to maintain compatibility
+    def _load_model(self):
+        """Alias for _initialize_model"""
+        self._initialize_model()
 
     @lru_cache(maxsize=1024)
     def _analyze_single(self, sentence):
         """Analyze a single sentence with caching."""
+        # Ensure model is loaded before first use
+        if not EmotionAnalyzer._is_model_loaded:
+            self._initialize_model()
+            
         if sentence in self._cache:
             return self._cache[sentence]
         inputs = self.tokenizer(sentence, return_tensors="pt", padding=True, truncation=True).to(self.device)
@@ -51,6 +75,10 @@ class EmotionAnalyzer:
 
     def _process_batch(self, batch):
         """Process a batch of sentences."""
+        # Ensure model is loaded before first use
+        if not EmotionAnalyzer._is_model_loaded:
+            self._initialize_model()
+            
         cached_results = [self._cache[sent] for sent in batch if sent in self._cache]
         uncached_sentences = [sent for sent in batch if sent not in self._cache]
 
@@ -77,6 +105,10 @@ class EmotionAnalyzer:
 
     def analyze_emotions(self, sentence):
         """Analyze a single sentence for emotion scores."""
+        # Ensure model is loaded before first use
+        if not EmotionAnalyzer._is_model_loaded:
+            self._initialize_model()
+            
         # Skip analysis for empty content
         if not sentence or not sentence.strip() or sentence.strip() == '\n':
             return {}
