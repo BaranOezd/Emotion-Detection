@@ -7,7 +7,13 @@ export default class LineChartModule {
     this.currentHighlightIndex = null; // Add property to track currently highlighted sentence
   }
 
+  // Modify the render method
   render(data) {
+    // Skip rendering if element is not visible (simple mode)
+    if (document.getElementById("linechart").style.display === "none") {
+      return;
+    }
+    
     const container = d3.select(this.containerSelector);
     container.html(""); // Clear the chart container
 
@@ -434,6 +440,11 @@ export default class LineChartModule {
    * @param {number} index - The index of the sentence to highlight
    */
   highlightSentence(index) {
+    // Skip highlighting if in simple mode
+    if (document.getElementById("linechart").style.display === "none") {
+      return;
+    }
+    
     if (!this.chartSvg || !this.data || index < 0 || index >= this.data.length) return;
     
     // Force clear any existing highlights first

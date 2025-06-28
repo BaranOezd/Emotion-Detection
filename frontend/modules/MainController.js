@@ -56,6 +56,8 @@ class MainController {
     this.textEditorModule.onContentChange(this.handleAutomaticAnalysis.bind(this));
     
     this.setupEventListeners();
+    // Set initial mode to dynamic
+    this.setMode("dynamic");
   }
   
   /**
@@ -63,7 +65,17 @@ class MainController {
    * @param {number} index - The index of the selected sentence
    */
   handleLineChartSentenceSelection(index) {
+    // Skip all chart operations completely if in simple mode
+    if (this.currentMode === "simple") {
+      return;
+    }
+    
     if (index >= 0 && index < this.data.length) {
+      // Skip chart operations if in simple mode
+      if (this.currentMode === "simple") {
+        return;
+      }
+      
       // Show the bar chart buttons when a sentence is selected
       const barChartButtons = document.getElementById("barChartButtons");
       barChartButtons.classList.add("visible");
@@ -236,6 +248,26 @@ class MainController {
       }
     });
 
+    // Replace toggle switch with segmented button event handling
+    const modeButtons = document.querySelectorAll(".mode-segment");
+    
+    modeButtons.forEach(button => {
+      button.addEventListener("click", (event) => {
+        // Remove active class from all buttons
+        modeButtons.forEach(btn => btn.classList.remove("mode-segment-active"));
+        
+        // Add active class to clicked button
+        event.target.classList.add("mode-segment-active");
+        
+        // Set the mode based on the clicked button
+        const mode = event.target.dataset.mode;
+        this.setMode(mode);
+        
+        // Log mode change
+        this.dataService.logInteraction(`mode_${mode}`);
+      });
+    });
+    
     // Connect the text editor scroll events to the line chart
     this.textEditorModule.onScroll(scrollInfo => {
       // Skip scroll sync if temporarily disabled
@@ -308,6 +340,18 @@ class MainController {
    * @param {Function} [options.afterRender] - Callback after rendering completes
    */
   updateSentenceList(options = {}) {
+    // Skip chart operations if in simple mode
+    if (this.currentMode === "simple") {
+      // In simple mode, just render the sentences without chart interaction
+      this.textEditorModule.renderSentences(
+        this.data, 
+        null, 
+        () => {}, // Empty callback - no chart interaction
+        options
+      );
+      return;
+    }
+    
     const barChartButtons = document.getElementById("barChartButtons");
     // Hide buttons when rendering new sentence list
     barChartButtons.classList.remove("visible");
@@ -629,6 +673,56 @@ class MainController {
       .finally(() => {
         document.body.classList.remove('analyzing');
       });
+  }
+
+  setMode(mode) {
+    // Store current mode
+    this.currentMode = mode;
+    
+    const barChart = document.getElementById("barchart");
+    const lineChart = document.getElementById("linechart");
+    const changeSentenceButton = document.getElementById("changeSentenceButton");
+    const resetButton = document.getElementById("resetButton");
+    
+    // Reset all states first
+    barChart.style.display = "";
+    lineChart.style.display = "";
+    changeSentenceButton.style.display = "";
+    resetButton.style.display = "";
+    changeSentenceButton.disabled = false;
+    resetButton.disabled = false;
+    
+    switch (mode) {
+      case "dynamic":
+        // Full functionality - AI enabled
+        this.enableAI(true);
+        break;
+        
+      case "static":
+        // Show graphs but disable AI features
+        changeSentenceButton.disabled = true;
+        resetButton.disabled = true;
+        this.enableAI(false);
+        break;
+        
+      case "simple":
+        // Hide graphs and disable AI features
+        barChart.style.display = "none";
+        lineChart.style.display = "none";
+        changeSentenceButton.style.display = "none";
+        resetButton.style.display = "none";
+        this.enableAI(false);
+        break;
+    }
+  }
+
+  enableAI(isEnabled) {
+    this.barChartModule.setAIEnabled(isEnabled);
+    // Only set TextEditorModule.aiEnabled if the method exists
+    if (typeof this.textEditorModule.setAIEnabled === 'function') {
+      this.textEditorModule.setAIEnabled(isEnabled);
+    }
+    this.dataService.setAiEnabled(isEnabled);
   }
 }
 

@@ -35,9 +35,11 @@
         <button id="uploadButton" class="button" title="Upload a text file for analysis" aria-label="Upload file">
           Upload
         </button>
-        <button id="toggleAIButton" class="button" title="Enable or disable AI modifications" aria-label="Toggle AI modifications">
-          Disable AI Modifications
-        </button>
+        <div class="mode-segmented" role="group" aria-label="Mode selector">
+          <button class="mode-segment mode-segment-active" data-mode="dynamic" id="modeDynamic">Dynamic</button>
+          <button class="mode-segment" data-mode="static" id="modeStatic">Static</button>
+          <button class="mode-segment" data-mode="simple" id="modeSimple">Simple</button>
+        </div>
       </div>
       <div id="barChartButtons" class="barChart-buttons">
         <button id="resetButton" class="button" title="Reset emotions to original values" aria-label="Undo emotions and the sentence">

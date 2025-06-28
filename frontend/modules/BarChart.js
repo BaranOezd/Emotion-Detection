@@ -24,6 +24,11 @@ export default class BarChartModule {
   }
 
   render(sentenceData, { onReset, onChangeSentence, skipAnimation = false } = {}) {
+    // Skip rendering if element is not visible (simple mode)
+    if (document.getElementById("barchart").style.display === "none") {
+      return;
+    }
+    
     const barChartDiv = d3.select(this.containerSelector);
     barChartDiv.html(""); // Clear any existing content
     
