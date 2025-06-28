@@ -6,6 +6,7 @@ export class DataService {
     this.counters = this.loadCounters();
     this.aiEnabled = true;
     this.logger = new LoggingService(baseUrl);
+    this.currentMode = 'dynamic'; // Default mode
   }
   
   // Counter management
@@ -30,24 +31,74 @@ export class DataService {
   // AI state management
   setAiEnabled(enabled) {
     this.aiEnabled = enabled;
-    this.logInteraction('ai_toggle');
+    // Update the mode in logger based on aiEnabled
+    if (this.logger && typeof this.logger.setMode === 'function') {
+      // If aiEnabled is true, mode is dynamic; otherwise it's determined by this.currentMode
+      if (enabled) {
+        this.logger.setMode('dynamic');
+      } else {
+        // Use static as default fallback if currentMode is not set
+        this.logger.setMode(this.currentMode || 'static');
+      }
+    }
   }
-  
-  incrementRewriteCount() {
-    this.counters.rewriteCount++;
-    this.saveCounters();
-    return this.counters.rewriteCount;
-  }
-  
-  incrementResetCount() {
-    this.counters.resetCount++;
-    this.saveCounters();
-    return this.counters.resetCount;
+
+  setMode(mode) {
+    this.currentMode = mode;
+    
+    // Also update the logger's mode
+    if (this.logger && typeof this.logger.setMode === 'function') {
+      this.logger.setMode(mode);
+    }
+    
+    // Update aiEnabled based on mode
+    this.aiEnabled = (mode === 'dynamic');
   }
 
   // Logging wrapper method
   logInteraction(type, data = {}) {
-    return this.logger.logInteraction(type, data, this.counters, this.aiEnabled);
+    try {
+      // Create base log data without aiEnabled field
+      const logData = {
+        type: type,
+        rewriteCount: this.counters.rewriteCount,
+        resetCount: this.counters.resetCount,
+        mode: this.currentMode,  // Use mode instead of aiEnabled
+        sentenceCount: this.counters.sentenceCount,
+        ...data
+      };
+
+      // Remove aiEnabled if present in data
+      if (logData.aiEnabled !== undefined) {
+        delete logData.aiEnabled;
+      }
+
+      if (type.startsWith('mode_')) {
+        // Extract actual mode name (dynamic, static, simple)
+        const mode = type.replace('mode_', '');
+        this.setMode(mode); // Update current mode
+        
+        // Update mode in log data to match the new mode
+        logData.mode = mode;
+        
+        // Use consistent type for all mode changes
+        logData.type = 'mode_change';
+      }
+      
+      // Send to logger with the current mode
+      if (typeof this.logger.logInteraction === 'function') {
+        this.logger.logInteraction(
+          logData.type,
+          data,
+          this.counters,
+          this.currentMode // Pass the current mode
+        );
+      } else {
+        console.log('Logged event:', logData);
+      }
+    } catch (err) {
+      console.error('Error logging interaction:', err);
+    }
   }
 
   // API Methods with integrated tracking
@@ -150,8 +201,7 @@ export class DataService {
 
   async modifySentence(sentenceData) {
     const startTime = performance.now();
-    this.incrementRewriteCount();
-    
+       
     // Capture original emotions and intended emotions
     const originalEmotions = sentenceData.originalEmotions || {};
     const intendedEmotions = sentenceData.emotions || {};

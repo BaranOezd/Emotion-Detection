@@ -12,7 +12,7 @@ export class LoggingService {
     
     // Tracking variables for differential logging
     this._lastCounters = {};
-    this._lastAiEnabled = true;
+    this._currentMode = 'dynamic'; // Default mode instead of _lastAiEnabled
 
     // Only prompt for userId if not already set
     this._initUserId();
@@ -64,15 +64,25 @@ export class LoggingService {
     return Date.now().toString(36) + Math.random().toString(36).substring(2);
   }
 
+  // Update mode setter method
+  setMode(mode) {
+    if (['dynamic', 'static', 'simple'].includes(mode)) {
+      this._currentMode = mode;
+    }
+  }
+
   // Core logging functionality
-  logInteraction(type, data = {}, counters = {}, aiEnabled = true) {
+  logInteraction(type, data = {}, counters = {}, mode = null) {
     // If userId is a Promise (not yet resolved), skip logging until resolved
     if (!this.userId || typeof this.userId.then === 'function') return;
 
     // Always use trimmed, lowercased userId
     const safeUserId = typeof this.userId === 'string' ? this.userId.trim().toLowerCase() : this.userId;
 
-    // Always include rewriteCount, resetCount, aiEnabled, and sentenceCount in every log
+    // Use provided mode or fall back to current mode
+    const logMode = mode || this._currentMode;
+
+    // Always include rewriteCount, resetCount, mode, and sentenceCount in every log
     const log = {
       userId: safeUserId,
       sessionId: this.sessionId,
@@ -80,7 +90,7 @@ export class LoggingService {
       type,
       rewriteCount: counters.rewriteCount,
       resetCount: counters.resetCount,
-      aiEnabled: aiEnabled,
+      mode: logMode, // Use mode instead of aiEnabled
       sentenceCount:
         (typeof counters.sentenceCount !== "undefined" && counters.sentenceCount !== null)
           ? counters.sentenceCount
@@ -89,7 +99,7 @@ export class LoggingService {
     };
 
     // Update tracking values
-    this._updateTrackedValues(counters, aiEnabled);
+    this._updateTrackedValues(counters, logMode);
     this.logQueue.push(log);
 
     if (this.logQueue.length > 20) {
@@ -107,13 +117,13 @@ export class LoggingService {
     return hasChanged;
   }
   
-  _updateTrackedValues(counters, aiEnabled) {
+  _updateTrackedValues(counters, mode) {
     Object.entries(counters).forEach(([key, value]) => {
       if (value !== undefined) {
         this._lastCounters[key] = value;
       }
     });
-    this._lastAiEnabled = aiEnabled;
+    this._currentMode = mode;
   }
   
   // Data filtering logic
