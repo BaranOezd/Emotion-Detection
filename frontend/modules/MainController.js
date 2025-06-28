@@ -56,8 +56,13 @@ class MainController {
     this.textEditorModule.onContentChange(this.handleAutomaticAnalysis.bind(this));
     
     this.setupEventListeners();
-    // Set initial mode to dynamic
-    this.setMode("dynamic");
+    
+    // Set initial mode based on localStorage or default to dynamic
+    const savedMode = localStorage.getItem('appMode') || 'dynamic';
+    this.setMode(savedMode);
+    
+    // Update the UI to match the saved mode
+    this.updateModeButtonUI(savedMode);
   }
   
   /**
@@ -253,15 +258,17 @@ class MainController {
     
     modeButtons.forEach(button => {
       button.addEventListener("click", (event) => {
-        // Remove active class from all buttons
-        modeButtons.forEach(btn => btn.classList.remove("mode-segment-active"));
-        
-        // Add active class to clicked button
-        event.target.classList.add("mode-segment-active");
-        
-        // Set the mode based on the clicked button
+        // Get the selected mode
         const mode = event.target.dataset.mode;
+        
+        // Update the UI
+        this.updateModeButtonUI(mode);
+        
+        // Set the mode
         this.setMode(mode);
+        
+        // Save the mode to localStorage
+        localStorage.setItem('appMode', mode);
         
         // Log mode change
         this.dataService.logInteraction(`mode_${mode}`);
@@ -723,6 +730,23 @@ class MainController {
       this.textEditorModule.setAIEnabled(isEnabled);
     }
     this.dataService.setAiEnabled(isEnabled);
+  }
+  
+  /**
+   * Update the UI to reflect the current mode
+   * @param {string} mode - The selected mode
+   */
+  updateModeButtonUI(mode) {
+    const modeButtons = document.querySelectorAll(".mode-segment");
+    
+    // Remove active class from all buttons
+    modeButtons.forEach(btn => btn.classList.remove("mode-segment-active"));
+    
+    // Add active class to the selected mode button
+    const activeButton = document.querySelector(`.mode-segment[data-mode="${mode}"]`);
+    if (activeButton) {
+      activeButton.classList.add("mode-segment-active");
+    }
   }
 }
 
