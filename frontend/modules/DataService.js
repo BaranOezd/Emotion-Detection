@@ -28,6 +28,16 @@ export class DataService {
     this.saveCounters();
   }
 
+  incrementRewriteCount() {
+    this.counters.rewriteCount += 1;
+    this.saveCounters();
+  }
+
+  incrementResetCount() {
+    this.counters.resetCount += 1;
+    this.saveCounters();
+  }
+
   // AI state management
   setAiEnabled(enabled) {
     this.aiEnabled = enabled;
@@ -225,17 +235,16 @@ export class DataService {
       }
 
       const data = await response.json();
+      if (data.error) throw new Error(data.error);
 
-      if (data.error) {
-        throw new Error(data.error);
-      }
-      
+      // Increment rewriteCount BEFORE logging
+      this.incrementRewriteCount();
+
       // Log both intended and actual emotion changes
       const intendedDelta = this.calculateEmotionDelta(originalEmotions, intendedEmotions);
       const actualDelta = this.calculateEmotionDelta(originalEmotions, data.emotion_levels);
-      
       const durationInSeconds = ((performance.now() - startTime) / 1000).toFixed(2);
-      
+
       this.logInteraction('emotion_modified', {
         intendedEmotions: intendedDelta,
         actualEmotions: actualDelta,
@@ -285,6 +294,7 @@ export class DataService {
   
   // Convenience logging methods
   logResetAction(sentenceData) {
+    // Increment resetCount BEFORE logging
     this.incrementResetCount();
     this.logInteraction('reset_initiated', {});
   }

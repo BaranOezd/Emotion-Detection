@@ -201,6 +201,14 @@ class MainController {
     // Update Reset button handler
     resetButton.addEventListener("click", () => {
       if (this.lastSelectedIndex !== undefined && this.data[this.lastSelectedIndex]) {
+        // Increment reset count BEFORE logging
+        this.dataService.incrementResetCount();
+
+        // Log the reset count individually
+        this.dataService.logInteraction('reset_count_incremented', {
+          resetCount: this.dataService.counters.resetCount
+        });
+
         const sentenceData = this.data[this.lastSelectedIndex];
         const currentIndex = this.lastSelectedIndex; // Store for later use
         
