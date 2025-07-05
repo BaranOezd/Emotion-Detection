@@ -21,7 +21,7 @@ if not api_key.startswith("sk-"):
 openai.api_key = api_key
 
 class SentenceGenerator:
-    def __init__(self, model_name="gpt-4.1-nano", max_tokens=100):
+    def __init__(self, model_name="gpt-4.1-nano", max_tokens=150):  
         """
         Initialize the generator with the specified OpenAI model.
         :param model_name: The name of the OpenAI model to use.
@@ -35,7 +35,7 @@ class SentenceGenerator:
         self.analyzer = EmotionAnalyzer(model_name=self.emotion_model_name)
         self.batch_size = 50  
         self.keep_best = 8   
-        self.max_concurrent_requests = 32 
+        self.max_concurrent_requests = 24
 
     def _log(self, message):
         """Simple console logging"""
