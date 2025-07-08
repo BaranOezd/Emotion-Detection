@@ -290,7 +290,10 @@ export default class LineChartModule {
     this.data = data;
     this.chartHeight = dynamicChartHeight;
     this.rowHeight = rowHeight; // Store calculated row height for scrolling calculations
-    
+
+    // --- ADD: Restore legend and line visibility after re-render ---
+    this._updateLegendAndLineVisibility();
+
     // If there was a highlighted sentence, restore it after re-rendering
     if (this.currentHighlightIndex !== null && this.currentHighlightIndex < data.length) {
       this.highlightSentence(this.currentHighlightIndex);
@@ -307,6 +310,22 @@ export default class LineChartModule {
         this.onScrollCallback(visibleRange);
       }
     });
+  }
+
+  // --- ADD: Helper to update legend and line visibility based on selectedEmotions ---
+  _updateLegendAndLineVisibility() {
+    const legendContainer = d3.select("#lineChartLegend");
+    const self = this;
+    legendContainer.selectAll(".legend-item").each(function () {
+      const emotion = d3.select(this).attr("data-emotion");
+      d3.select(this).style("opacity", self.selectedEmotions.length === 0 || self.selectedEmotions.includes(emotion) ? 1 : 0.5);
+    });
+    d3.selectAll(".lines")
+      .transition().duration(0)
+      .style("opacity", function () {
+        const classes = d3.select(this).attr("class").split(" ");
+        return self.selectedEmotions.length === 0 || self.selectedEmotions.some(sel => classes.includes(`line-${sel}`)) ? 1 : 0.1;
+      });
   }
 
   _setupResizeHandler(chartContainer, chartSvg, initialHeight, wrapper) {
@@ -358,7 +377,7 @@ export default class LineChartModule {
     this.resizeObserver.observe(wrapper.node());
   }
 
-  drawLegend(legendSvg, chartWidth, legendHeight) {
+  drawLegend(legendSvg, chartWidth, chartHeight) {
     const padding = { x: 15, y: 10 };
     const emotionColors = this.emotionColors;
     const self = this;
@@ -418,19 +437,8 @@ export default class LineChartModule {
           }
         }
 
-        // Update legend item opacity
-        legendContainer.selectAll(".legend-item").each(function () {
-          const emotion = d3.select(this).attr("data-emotion");
-          d3.select(this).style("opacity", self.selectedEmotions.length === 0 || self.selectedEmotions.includes(emotion) ? 1 : 0.5);
-        });
-
-        // Update line visibility based on selection
-        d3.selectAll(".lines")
-          .transition().duration(500)
-          .style("opacity", function () {
-            const classes = d3.select(this).attr("class").split(" ");
-            return self.selectedEmotions.length === 0 || self.selectedEmotions.some(sel => classes.includes(`line-${sel}`)) ? 1 : 0.1;
-          });
+        // --- REPLACE: Update legend and line visibility using helper ---
+        self._updateLegendAndLineVisibility();
       });
     });
   }
